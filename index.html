@@ -819,7 +819,6 @@ let state = {
    FIREBASE CONFIG & REALTIME SYNC
    ============================================================ */
 // Firebase tự push dữ liệu mới về tất cả máy đang mở — không cần polling
-let _fbDatabase = null;   // Firebase Database instance
 let _fbUnsubscribe = null; // hàm huỷ listener khi cần
 let _isSavingToCloud = false; // tránh vòng lặp: save → trigger listener → save lại
 
@@ -2704,25 +2703,31 @@ window.initApp = async function initApp() {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
-    authDomain: "qltkpccc.firebaseapp.com",
-    databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "qltkpccc",
-    storageBucket: "qltkpccc.firebasestorage.app",
-    messagingSenderId: "426163323845",
-    appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
-  };
+  // Khởi động toàn bộ app sau khi DOM + Firebase SDK đều sẵn sàng
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      const firebaseConfig = {
+        apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
+        authDomain: "qltkpccc.firebaseapp.com",
+        databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "qltkpccc",
+        storageBucket: "qltkpccc.firebasestorage.app",
+        messagingSenderId: "426163323845",
+        appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
+      };
 
-  const _firebaseApp = firebase.initializeApp(firebaseConfig);
-  const _firebaseDb  = firebase.database();
+      firebase.initializeApp(firebaseConfig);
+      _fbDatabase = firebase.database();
+      _fbRef      = _fbDatabase.ref('appdata');
 
-  // _fbDatabase và _fbRef dùng trong sync functions
-  _fbDatabase = _firebaseDb;
-  _fbRef      = _firebaseDb.ref('appdata');
-
-  // Khởi động app sau khi Firebase sẵn sàng
-  window.initApp(_firebaseDb);
+      console.log('Firebase ready, starting app...');
+    } catch(e) {
+      console.error('Firebase init failed:', e);
+      _fbDatabase = null;
+      _fbRef      = null;
+    }
+    window.initApp();
+  });
 </script>
 </body>
 </html>
