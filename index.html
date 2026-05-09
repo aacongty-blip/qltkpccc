@@ -2668,8 +2668,7 @@ function hideLoading() {
 }
 
 // Được gọi từ Firebase module script ở cuối file sau khi SDK sẵn sàng
-window.initApp = async function initApp() {
-  // _fbDatabase và _fbRef đã được set bởi Firebase script bên dưới
+async function initApp() {
 
   loadState();
   loadRole();
@@ -2699,13 +2698,13 @@ window.initApp = async function initApp() {
 
 </script>
 
-<!-- Firebase Compat SDK v9 — hoạt động tốt trên mọi trình duyệt, không bị CORS -->
+<!-- Firebase Compat SDK — không bị CORS, hỗ trợ realtime onValue -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-  // Script này chạy SAU khi DOM đã load xong → gọi trực tiếp, không cần DOMContentLoaded
+(function() {
   try {
-    const firebaseConfig = {
+    firebase.initializeApp({
       apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
       authDomain: "qltkpccc.firebaseapp.com",
       databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -2713,17 +2712,17 @@ window.initApp = async function initApp() {
       storageBucket: "qltkpccc.firebasestorage.app",
       messagingSenderId: "426163323845",
       appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
-    };
-    firebase.initializeApp(firebaseConfig);
+    });
     _fbDatabase = firebase.database();
     _fbRef      = _fbDatabase.ref('appdata');
-    console.log('✅ Firebase ready');
+    console.log('✅ Firebase khởi tạo thành công');
   } catch(e) {
-    console.error('❌ Firebase init failed:', e);
+    console.error('❌ Firebase lỗi:', e.message);
     _fbDatabase = null;
     _fbRef      = null;
   }
-  window.initApp();
+  initApp();
+})();
 </script>
 </body>
 </html>
