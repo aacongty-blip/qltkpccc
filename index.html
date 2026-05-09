@@ -819,11 +819,12 @@ let state = {
    FIREBASE REALTIME SYNC — dùng SDK chính thức
    onValue listener: server push về client ngay khi có thay đổi
    ============================================================ */
-let _fbDatabase      = null;
-let _fbRef           = null;
-let _fbListener      = null;
-let _fbUnsubscribe   = null;
-let _isSavingToCloud = false;
+// Dùng var (không phải let) để accessible từ script tag khác
+var _fbDatabase      = null;
+var _fbRef           = null;
+var _fbListener      = null;
+var _fbUnsubscribe   = null;
+var _isSavingToCloud = false;
 
 function hasSyncEnabled() { return !!_fbDatabase; }
 
@@ -2663,7 +2664,7 @@ function hideLoading() {
 
 // Được gọi từ Firebase module script ở cuối file sau khi SDK sẵn sàng
 async function initApp() {
-
+  console.log('🚀 initApp started, _fbRef:', !!_fbRef);
   loadState();
   loadRole();
   applyRoleUI();
