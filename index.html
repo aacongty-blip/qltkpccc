@@ -823,14 +823,16 @@ let _fbDatabase = null;   // Firebase Database instance
 let _fbUnsubscribe = null; // hàm huỷ listener khi cần
 let _isSavingToCloud = false; // tránh vòng lặp: save → trigger listener → save lại
 
-function initFirebase() {
-  // Firebase đã được khởi tạo qua module script ở cuối file
-  // Hàm này chỉ là placeholder để gọi từ initApp
-}
+/* ============================================================
+   FIREBASE REALTIME SYNC — dùng SDK chính thức
+   onValue listener: server push về client ngay khi có thay đổi
+   ============================================================ */
+let _fbDatabase  = null;
+let _fbRef       = null;
+let _fbListener  = null;
+let _isSavingToCloud = false;
 
-function hasSyncEnabled() {
-  return !!_fbDatabase;
-}
+function hasSyncEnabled() { return !!_fbDatabase; }
 
 function updateSyncStatus(status) {
   const el = document.getElementById('sync-status');
@@ -848,137 +850,80 @@ function updateSyncStatus(status) {
 
 /* ---------- Lưu lên Firebase ---------- */
 async function pushToCloud(showToast = false) {
-  if (!_fbDatabase) return;
+  if (!_fbRef) return;
   _isSavingToCloud = true;
   try {
     state.meta.lastSaved = new Date().toISOString();
-    // Dùng REST API của Firebase (không cần SDK module riêng)
-    const url = `${FIREBASE_DB_URL}/appdata.json`;
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state)
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // Dùng Firebase SDK set()
+    await _fbRef.set(state);
     if (showToast) toast('☁️ Đã đồng bộ lên Firebase', 'success');
   } catch(e) {
     updateSyncStatus('error');
     toast('⚠️ Lỗi lưu Firebase: ' + e.message, 'error', 5000);
     console.error('pushToCloud:', e);
   } finally {
-    setTimeout(() => { _isSavingToCloud = false; }, 1000);
+    // Delay reset flag để tránh trigger listener ngay
+    setTimeout(() => { _isSavingToCloud = false; }, 2000);
   }
 }
 
-/* ---------- Lắng nghe thay đổi realtime từ Firebase ---------- */
-function startRealtimeListener() {
-  if (!_fbDatabase) return;
-
-  // Dùng Firebase REST SSE (Server-Sent Events) — không cần SDK module
-  const url = `${FIREBASE_DB_URL}/appdata.json`;
-  const evtSource = new EventSource(url + '?alt=media'); // fallback
-
-  // Dùng cách đơn giản hơn: polling thông minh qua fetch + SSE của Firebase REST
-  // Firebase REST hỗ trợ streaming qua header Accept: text/event-stream
-  startFirebaseSSE();
-}
-
-async function startFirebaseSSE() {
-  if (!_fbDatabase) return;
-  const url = `${FIREBASE_DB_URL}/appdata.json`;
-
-  try {
-    const controller = new AbortController();
-    _fbUnsubscribe = () => controller.abort();
-
-    const res = await fetch(url, {
-      headers: { 'Accept': 'text/event-stream' },
-      signal: controller.signal
-    });
-
-    if (!res.ok) throw new Error('SSE connect failed: ' + res.status);
-
-    updateSyncStatus('ok');
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // giữ lại dòng chưa hoàn chỉnh
-
-      let eventType = '';
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim();
-        } else if (line.startsWith('data: ') && eventType === 'put') {
-          try {
-            const parsed = JSON.parse(line.slice(6));
-            if (parsed && parsed.data) {
-              onCloudDataReceived(parsed.data);
-            }
-          } catch(e) { /* ignore parse errors */ }
-          eventType = '';
-        }
-      }
-    }
-  } catch(e) {
-    if (e.name === 'AbortError') return; // bị huỷ chủ động
-    console.warn('SSE disconnected, reconnecting in 5s:', e.message);
-    updateSyncStatus('error');
-    setTimeout(startFirebaseSSE, 5000); // tự kết nối lại
-  }
-}
-
-function onCloudDataReceived(data) {
-  if (_isSavingToCloud) return; // bỏ qua echo từ chính mình
-  if (!data || !data.employees || !data.projects) return;
-
-  // Chỉ cập nhật nếu cloud mới hơn local
-  const cloudTs = data.meta && data.meta.lastSaved;
-  const localTs = state.meta && state.meta.lastSaved;
-  if (cloudTs && localTs && cloudTs <= localTs) return;
-
-  state.employees = data.employees;
-  state.projects  = data.projects;
-  state.config    = { ...defaultConfig, ...(data.config || {}) };
-  state.meta      = data.meta || { lastSaved: null, version: 1 };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
-  updateLastSaved();
-  if (currentRole) render(); // chỉ re-render nếu đã đăng nhập
-
-  updateSyncStatus('ok');
-  // Thông báo nhẹ ở sidebar thay vì toast
-  const el = document.getElementById('sync-status');
-  if (el) {
-    el.textContent = '🔴 Đã nhận dữ liệu mới!';
-    el.style.color = '#86efac';
-    setTimeout(() => updateSyncStatus('ok'), 2000);
-  }
-}
-
-/* ---------- Kéo dữ liệu 1 lần từ Firebase ---------- */
+/* ---------- Kéo 1 lần từ Firebase ---------- */
 async function pullFromCloud() {
-  if (!_fbDatabase) return false;
+  if (!_fbRef) return false;
   try {
     updateSyncStatus('loading');
-    const url = `${FIREBASE_DB_URL}/appdata.json`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (!data) { updateSyncStatus('ok'); return false; }
-    onCloudDataReceived(data);
+    const snapshot = await _fbRef.get();
+    if (!snapshot.exists()) { updateSyncStatus('ok'); return false; }
+    applyCloudData(snapshot.val());
     updateSyncStatus('ok');
     return true;
   } catch(e) {
     updateSyncStatus('error');
     console.error('pullFromCloud:', e);
     return false;
+  }
+}
+
+/* ---------- Xử lý dữ liệu nhận từ cloud ---------- */
+function applyCloudData(data) {
+  if (!data || !data.employees || !data.projects) return;
+  const cloudTs = data.meta && data.meta.lastSaved;
+  const localTs = state.meta && state.meta.lastSaved;
+  if (cloudTs && localTs && cloudTs <= localTs) return; // không mới hơn
+  state.employees = data.employees;
+  state.projects  = data.projects;
+  state.config    = { ...defaultConfig, ...(data.config || {}) };
+  state.meta      = data.meta || { lastSaved: null, version: 1 };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  updateLastSaved();
+  if (currentRole) render();
+}
+
+/* ---------- Lắng nghe realtime (server push) ---------- */
+function startRealtimeListener() {
+  if (!_fbRef || _fbListener) return;
+  _fbListener = _fbRef.on('value', (snapshot) => {
+    if (_isSavingToCloud) return; // bỏ qua echo từ chính mình
+    if (!snapshot.exists()) return;
+    applyCloudData(snapshot.val());
+    updateSyncStatus('ok');
+    // Thông báo nhẹ
+    const el = document.getElementById('sync-status');
+    if (el) {
+      el.textContent = '🔴 Đã nhận dữ liệu mới!';
+      el.style.color = '#86efac';
+      setTimeout(() => updateSyncStatus('ok'), 2000);
+    }
+  }, (error) => {
+    console.error('Firebase listener error:', error);
+    updateSyncStatus('error');
+  });
+}
+
+function stopRealtimeListener() {
+  if (_fbRef && _fbListener) {
+    _fbRef.off('value', _fbListener);
+    _fbListener = null;
   }
 }
 
@@ -1020,10 +965,8 @@ function saveState() {
   } catch(e) {
     toast('Lỗi lưu local: ' + e.message, 'error');
   }
-  // Đẩy lên Firebase — tất cả máy đang mở sẽ nhận ngay qua SSE
-  if (_fbDatabase) {
-    pushToCloud(false);
-  }
+  // Đẩy lên Firebase — tất cả máy đang mở nhận ngay qua onValue listener
+  if (_fbRef) pushToCloud(false);
 }
 
 function updateLastSaved() {
@@ -2460,7 +2403,7 @@ function renderConfig(content, actions) {
       </div>
       <div class="info-item">
         <span class="info-label">Database URL</span>
-        <span class="info-value text-xs">${FIREBASE_DB_URL || '—'}</span>
+        <span class="info-value text-xs">qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app</span>
       </div>
     </div>
     <div class="flex gap-2 flex-wrap">
@@ -2726,32 +2669,25 @@ function hideLoading() {
 }
 
 // Được gọi từ Firebase module script ở cuối file sau khi SDK sẵn sàng
-window.initApp = async function initApp(firebaseDb) {
-  _fbDatabase = firebaseDb || null;
+window.initApp = async function initApp() {
+  // _fbDatabase và _fbRef đã được set bởi Firebase script bên dưới
 
   loadState();
   loadRole();
   applyRoleUI();
 
-  if (_fbDatabase) {
-    setLoadingMsg('🔴 Đang kết nối Firebase…', 20);
-    try {
-      const ok = await pullFromCloud();
-      setLoadingMsg(ok ? '✅ Đã tải dữ liệu!' : '📂 Firebase trống, dùng dữ liệu local', 100);
-      updateLastSaved();
-    } catch(e) {
-      setLoadingMsg('⚠️ Lỗi kết nối, dùng dữ liệu local', 100);
-      await new Promise(r => setTimeout(r, 800));
-    }
-    await new Promise(r => setTimeout(r, 400));
-    updateSyncStatus('ok');
-    // Bắt đầu lắng nghe thay đổi realtime
-    startRealtimeListener();
-  } else {
-    setLoadingMsg('📂 Đang khởi động…', 100);
-    await new Promise(r => setTimeout(r, 300));
-    updateSyncStatus('off');
+  setLoadingMsg('🔴 Đang kết nối Firebase…', 20);
+  try {
+    const ok = await pullFromCloud();
+    setLoadingMsg(ok ? '✅ Đã tải dữ liệu!' : '📂 Firebase trống, dùng dữ liệu local', 100);
+    updateLastSaved();
+  } catch(e) {
+    setLoadingMsg('⚠️ Lỗi kết nối, dùng dữ liệu local', 100);
+    await new Promise(r => setTimeout(r, 800));
   }
+  await new Promise(r => setTimeout(r, 400));
+  updateSyncStatus('ok');
+  startRealtimeListener(); // server push realtime
 
   hideLoading();
 
@@ -2762,15 +2698,12 @@ window.initApp = async function initApp(firebaseDb) {
   }
 }
 
-// FIREBASE_DB_URL dùng cho REST API (fetch)
-const FIREBASE_DB_URL = 'https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app';
 </script>
 
-<!-- Firebase SDK (module) — khởi tạo sau khi JS chính đã load -->
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-
+<!-- Firebase Compat SDK v9 — hoạt động tốt trên mọi trình duyệt, không bị CORS -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
     authDomain: "qltkpccc.firebaseapp.com",
@@ -2781,11 +2714,15 @@ const FIREBASE_DB_URL = 'https://qltkpccc-default-rtdb.asia-southeast1.firebased
     appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db  = getDatabase(app);
+  const _firebaseApp = firebase.initializeApp(firebaseConfig);
+  const _firebaseDb  = firebase.database();
 
-  // Gọi initApp với Firebase db instance (hàm định nghĩa ở script chính)
-  window.initApp(db);
+  // _fbDatabase và _fbRef dùng trong sync functions
+  _fbDatabase = _firebaseDb;
+  _fbRef      = _firebaseDb.ref('appdata');
+
+  // Khởi động app sau khi Firebase sẵn sàng
+  window.initApp(_firebaseDb);
 </script>
 </body>
 </html>
