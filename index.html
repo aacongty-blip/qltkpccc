@@ -880,10 +880,14 @@ async function pullFromCloud() {
 
 /* ---------- Xử lý dữ liệu nhận từ cloud ---------- */
 function applyCloudData(data) {
-  if (!data || !data.employees || !data.projects) return;
+  if (!data || !data.employees || !data.projects) {
+    console.log('applyCloudData: dữ liệu không hợp lệ', data);
+    return;
+  }
   const cloudTs = data.meta && data.meta.lastSaved;
   const localTs = state.meta && state.meta.lastSaved;
-  if (cloudTs && localTs && cloudTs <= localTs) return; // không mới hơn
+  console.log('applyCloudData — cloud:', cloudTs, '| local:', localTs);
+  // Bỏ guard timestamp — luôn nhận dữ liệu từ cloud (Firebase là nguồn sự thật)
   state.employees = data.employees;
   state.projects  = data.projects;
   state.config    = { ...defaultConfig, ...(data.config || {}) };
@@ -896,12 +900,13 @@ function applyCloudData(data) {
 /* ---------- Lắng nghe realtime (server push) ---------- */
 function startRealtimeListener() {
   if (!_fbRef || _fbListener) return;
+  console.log('👂 Bắt đầu lắng nghe Firebase realtime...');
   _fbListener = _fbRef.on('value', (snapshot) => {
-    if (_isSavingToCloud) return; // bỏ qua echo từ chính mình
+    console.log('📡 Firebase push event nhận được, _isSavingToCloud:', _isSavingToCloud);
+    if (_isSavingToCloud) return;
     if (!snapshot.exists()) return;
     applyCloudData(snapshot.val());
     updateSyncStatus('ok');
-    // Thông báo nhẹ
     const el = document.getElementById('sync-status');
     if (el) {
       el.textContent = '🔴 Đã nhận dữ liệu mới!';
