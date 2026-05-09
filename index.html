@@ -569,9 +569,7 @@ function loginAsLead() {
     hideLoginScreen();
     render();
     toast('Đăng nhập thành công với vai trò Quản lý', 'success');
-    if (hasSyncEnabled()) {
-      pullFromCloud().then(ok => { if (ok) { updateLastSaved(); render(); toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000); } });
-    }
+    // Firebase listener tự động cập nhật realtime
   } else {
     const pin = prompt('🔐 Nhập mật khẩu Quản lý:');
     if (!pin) return;
@@ -583,9 +581,7 @@ function loginAsLead() {
     hideLoginScreen();
     render();
     toast('Đăng nhập thành công với vai trò Quản lý', 'success');
-    if (hasSyncEnabled()) {
-      pullFromCloud().then(ok => { if (ok) { updateLastSaved(); render(); toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000); } });
-    }
+    // Firebase listener tự động cập nhật realtime
   }
 }
 
@@ -795,17 +791,9 @@ function submitMyTaskUpdate(projectId, taskId) {
 }
 
 /* ============================================================
-   STATE & STORAGE
+   STATE & STORAGE (Firebase Realtime Database)
    ============================================================ */
 const STORAGE_KEY = 'ql_thietke_pccc_v1';
-
-// =====================================================================
-// ★ CẤU HÌNH GOOGLE SHEETS SYNC ★
-// Dán Web App URL từ Google Apps Script vào đây (giữa 2 dấu nháy đơn)
-// Sau khi dán, lưu file lại → TẤT CẢ máy mở file này đều tự đồng bộ
-// Ví dụ: 'https://script.google.com/macros/s/ABC123.../exec'
-// =====================================================================
-const HARDCODED_GAS_URL = '';   // ← DÁN URL VÀO ĐÂY
 
 const defaultConfig = {
   thresholdPercent: 30,
@@ -827,98 +815,183 @@ let state = {
   meta: { lastSaved: null, version: 1 }
 };
 
-/* ---------- Google Apps Script helpers ---------- */
-// URL ưu tiên: hardcoded trong file → localStorage (fallback nếu chưa hardcode)
-function getGasUrl() {
-  if (HARDCODED_GAS_URL && HARDCODED_GAS_URL.startsWith('https://')) return HARDCODED_GAS_URL;
-  return localStorage.getItem('ql_thietke_pccc_gas_url') || '';
-}
-function setGasUrl(url) {
-  // Lưu vào localStorage để dùng tạm; nhắc user hardcode vào file
-  localStorage.setItem('ql_thietke_pccc_gas_url', url.trim());
-  updateSyncStatus();
-}
-function hasSyncEnabled() { return !!getGasUrl(); }
+/* ============================================================
+   FIREBASE CONFIG & REALTIME SYNC
+   ============================================================ */
+// Firebase tự push dữ liệu mới về tất cả máy đang mở — không cần polling
+let _fbDatabase = null;   // Firebase Database instance
+let _fbUnsubscribe = null; // hàm huỷ listener khi cần
+let _isSavingToCloud = false; // tránh vòng lặp: save → trigger listener → save lại
 
-function updateSyncStatus() {
+function initFirebase() {
+  // Firebase đã được khởi tạo qua module script ở cuối file
+  // Hàm này chỉ là placeholder để gọi từ initApp
+}
+
+function hasSyncEnabled() {
+  return !!_fbDatabase;
+}
+
+function updateSyncStatus(status) {
   const el = document.getElementById('sync-status');
   if (!el) return;
-  if (hasSyncEnabled()) {
-    el.textContent = '☁️ Sync: Google Sheets ✓';
-    el.style.color = '#86efac';
-  } else {
-    el.textContent = '☁️ Chưa cấu hình sync';
-    el.style.color = '#94a3b8';
-  }
+  const map = {
+    ok:      { text: '🔴 Firebase: Realtime ✓', color: '#86efac' },
+    loading: { text: '☁️ Đang kết nối…',        color: '#fcd34d' },
+    error:   { text: '🔴 Firebase lỗi ⚠',       color: '#fca5a5' },
+    off:     { text: '☁️ Chưa kết nối',          color: '#94a3b8' },
+  };
+  const s = map[status] || map.off;
+  el.textContent = s.text;
+  el.style.color  = s.color;
 }
 
-/**
- * Gửi toàn bộ state lên Google Sheets qua Apps Script Web App.
- * Apps Script sẽ nhận JSON và ghi vào Sheet.
- */
-async function pushToCloud(showToast = true) {
-  const url = getGasUrl();
-  if (!url) return;
+/* ---------- Lưu lên Firebase ---------- */
+async function pushToCloud(showToast = false) {
+  if (!_fbDatabase) return;
+  _isSavingToCloud = true;
   try {
+    state.meta.lastSaved = new Date().toISOString();
+    // Dùng REST API của Firebase (không cần SDK module riêng)
+    const url = `${FIREBASE_DB_URL}/appdata.json`;
     const res = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'save', payload: state }),
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
     });
-    const text = await res.text();
-    const json = JSON.parse(text);
-    if (json.status === 'ok') {
-      if (showToast) toast('☁️ Đã đồng bộ lên Google Sheets', 'success');
-    } else {
-      throw new Error(json.message || 'Lỗi không xác định');
-    }
-  } catch (e) {
-    toast('⚠️ Sync thất bại: ' + e.message, 'error', 6000);
-    console.error('pushToCloud error:', e);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (showToast) toast('☁️ Đã đồng bộ lên Firebase', 'success');
+  } catch(e) {
+    updateSyncStatus('error');
+    toast('⚠️ Lỗi lưu Firebase: ' + e.message, 'error', 5000);
+    console.error('pushToCloud:', e);
+  } finally {
+    setTimeout(() => { _isSavingToCloud = false; }, 1000);
   }
 }
 
-/**
- * Tải dữ liệu từ Google Sheets về.
- */
-async function pullFromCloud() {
-  const url = getGasUrl();
-  if (!url) return false;
+/* ---------- Lắng nghe thay đổi realtime từ Firebase ---------- */
+function startRealtimeListener() {
+  if (!_fbDatabase) return;
+
+  // Dùng Firebase REST SSE (Server-Sent Events) — không cần SDK module
+  const url = `${FIREBASE_DB_URL}/appdata.json`;
+  const evtSource = new EventSource(url + '?alt=media'); // fallback
+
+  // Dùng cách đơn giản hơn: polling thông minh qua fetch + SSE của Firebase REST
+  // Firebase REST hỗ trợ streaming qua header Accept: text/event-stream
+  startFirebaseSSE();
+}
+
+async function startFirebaseSSE() {
+  if (!_fbDatabase) return;
+  const url = `${FIREBASE_DB_URL}/appdata.json`;
+
   try {
-    setSyncIndicator('loading');
-    const res = await fetch(url + '?action=load');
-    const text = await res.text();
-    const json = JSON.parse(text);
-    if (json.status === 'ok' && json.payload) {
-      const parsed = json.payload;
-      if (!parsed.employees || !parsed.projects) throw new Error('Dữ liệu cloud không hợp lệ');
-      state.employees = parsed.employees;
-      state.projects  = parsed.projects;
-      state.config    = { ...defaultConfig, ...(parsed.config || {}) };
-      state.meta      = parsed.meta || { lastSaved: null, version: 1 };
-      // Also cache locally so app works offline
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      setSyncIndicator('ok');
-      return true;
-    } else if (json.status === 'empty') {
-      setSyncIndicator('ok');
-      return false; // Sheet rỗng, không ghi đè
-    } else {
-      throw new Error(json.message || 'Phản hồi lạ từ server');
+    const controller = new AbortController();
+    _fbUnsubscribe = () => controller.abort();
+
+    const res = await fetch(url, {
+      headers: { 'Accept': 'text/event-stream' },
+      signal: controller.signal
+    });
+
+    if (!res.ok) throw new Error('SSE connect failed: ' + res.status);
+
+    updateSyncStatus('ok');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // giữ lại dòng chưa hoàn chỉnh
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && eventType === 'put') {
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed && parsed.data) {
+              onCloudDataReceived(parsed.data);
+            }
+          } catch(e) { /* ignore parse errors */ }
+          eventType = '';
+        }
+      }
     }
-  } catch (e) {
-    setSyncIndicator('error');
-    toast('⚠️ Không kéo được dữ liệu cloud: ' + e.message, 'error', 6000);
-    console.error('pullFromCloud error:', e);
+  } catch(e) {
+    if (e.name === 'AbortError') return; // bị huỷ chủ động
+    console.warn('SSE disconnected, reconnecting in 5s:', e.message);
+    updateSyncStatus('error');
+    setTimeout(startFirebaseSSE, 5000); // tự kết nối lại
+  }
+}
+
+function onCloudDataReceived(data) {
+  if (_isSavingToCloud) return; // bỏ qua echo từ chính mình
+  if (!data || !data.employees || !data.projects) return;
+
+  // Chỉ cập nhật nếu cloud mới hơn local
+  const cloudTs = data.meta && data.meta.lastSaved;
+  const localTs = state.meta && state.meta.lastSaved;
+  if (cloudTs && localTs && cloudTs <= localTs) return;
+
+  state.employees = data.employees;
+  state.projects  = data.projects;
+  state.config    = { ...defaultConfig, ...(data.config || {}) };
+  state.meta      = data.meta || { lastSaved: null, version: 1 };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  updateLastSaved();
+  if (currentRole) render(); // chỉ re-render nếu đã đăng nhập
+
+  updateSyncStatus('ok');
+  // Thông báo nhẹ ở sidebar thay vì toast
+  const el = document.getElementById('sync-status');
+  if (el) {
+    el.textContent = '🔴 Đã nhận dữ liệu mới!';
+    el.style.color = '#86efac';
+    setTimeout(() => updateSyncStatus('ok'), 2000);
+  }
+}
+
+/* ---------- Kéo dữ liệu 1 lần từ Firebase ---------- */
+async function pullFromCloud() {
+  if (!_fbDatabase) return false;
+  try {
+    updateSyncStatus('loading');
+    const url = `${FIREBASE_DB_URL}/appdata.json`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data) { updateSyncStatus('ok'); return false; }
+    onCloudDataReceived(data);
+    updateSyncStatus('ok');
+    return true;
+  } catch(e) {
+    updateSyncStatus('error');
+    console.error('pullFromCloud:', e);
     return false;
   }
 }
 
-function setSyncIndicator(state) {
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  if (state === 'loading') { el.textContent = '☁️ Đang đồng bộ…'; el.style.color = '#fcd34d'; }
-  else if (state === 'ok')  { el.textContent = '☁️ Sync: Google Sheets ✓'; el.style.color = '#86efac'; }
-  else if (state === 'error') { el.textContent = '☁️ Sync lỗi ⚠'; el.style.color = '#fca5a5'; }
+async function manualPullCloud() {
+  if (!hasSyncEnabled()) { toast('Firebase chưa kết nối', 'error'); return; }
+  const ok = await pullFromCloud();
+  if (ok) { toast('✅ Đã kéo dữ liệu mới nhất từ Firebase!', 'success'); updateLastSaved(); render(); }
+  else toast('ℹ️ Firebase chưa có dữ liệu', 'warning');
+}
+
+async function manualPushCloud() {
+  if (!hasSyncEnabled()) { toast('Firebase chưa kết nối', 'error'); return; }
+  await pushToCloud(true);
 }
 
 /* ---------- Local storage ---------- */
@@ -932,28 +1005,24 @@ function loadState() {
       state.config    = { ...defaultConfig, ...(parsed.config || {}) };
       state.meta      = parsed.meta || { lastSaved: null, version: 1 };
     }
-  } catch (e) {
-    console.error('Lỗi tải dữ liệu:', e);
-    toast('Không tải được dữ liệu lưu trước. Bắt đầu mới.', 'error');
+  } catch(e) {
+    console.error('Lỗi tải dữ liệu local:', e);
   }
   updateLastSaved();
-  updateSyncStatus();
+  updateSyncStatus('off');
 }
 
-/**
- * Lưu local TRƯỚC (nhanh, không block UI), rồi push cloud bất đồng bộ.
- */
 function saveState() {
   state.meta.lastSaved = new Date().toISOString();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     updateLastSaved();
-  } catch (e) {
+  } catch(e) {
     toast('Lỗi lưu local: ' + e.message, 'error');
   }
-  // Push cloud nền, không chờ
-  if (hasSyncEnabled()) {
-    pushToCloud(false).then(() => setSyncIndicator('ok')).catch(() => setSyncIndicator('error'));
+  // Đẩy lên Firebase — tất cả máy đang mở sẽ nhận ngay qua SSE
+  if (_fbDatabase) {
+    pushToCloud(false);
   }
 }
 
@@ -968,81 +1037,40 @@ function updateLastSaved() {
   }
 }
 
-/* ---------- Manual sync actions ---------- */
-async function manualPullCloud() {
-  if (!isLead()) { toast('Chỉ Quản lý mới được kéo dữ liệu cloud', 'error'); return; }
-  if (!hasSyncEnabled()) { toast('Chưa cấu hình URL Google Apps Script', 'error'); return; }
-  const ok = await pullFromCloud();
-  if (ok) {
-    toast('✅ Đã tải dữ liệu mới nhất từ Google Sheets!', 'success');
-    updateLastSaved();
-    render();
-  } else {
-    toast('ℹ️ Google Sheets chưa có dữ liệu hoặc trùng với local', 'warning');
-  }
-}
-
-async function manualPushCloud() {
-  if (!isLead()) { toast('Chỉ Quản lý mới được đẩy dữ liệu cloud', 'error'); return; }
-  if (!hasSyncEnabled()) { toast('Chưa cấu hình URL Google Apps Script', 'error'); return; }
-  await pushToCloud(true);
-}
-
-function configureGasUrl() {
-  if (!isLead()) { toast('Chỉ Quản lý mới được cấu hình sync', 'error'); return; }
-  const current = getGasUrl();
-  const isHardcoded = HARDCODED_GAS_URL && HARDCODED_GAS_URL.startsWith('https://');
-  showModal('⚙️ Cấu hình Google Sheets Sync', `
-    ${isHardcoded
-      ? `<div style="background:#dcfce7;border-left:4px solid #16a34a;padding:10px 14px;border-radius:6px;font-size:13px;color:#14532d;margin-bottom:14px">
-           ✅ <strong>URL đã được nhúng sẵn trong file</strong> — tất cả máy tự đồng bộ khi mở file.
-         </div>`
-      : `<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:6px;font-size:13px;color:#78350f;margin-bottom:14px">
-           ⚠️ <strong>URL đang lưu tạm trong trình duyệt này.</strong><br>
-           Để máy khác tự đồng bộ, hãy mở file HTML bằng Notepad/VSCode, tìm dòng <code>HARDCODED_GAS_URL</code> và dán URL vào đó, rồi lưu file lại.
-         </div>`
-    }
-    <div class="form-group">
-      <label class="form-label required">Apps Script Web App URL</label>
-      <input type="url" class="form-input" id="gas-url-input" value="${escapeHtml(current)}"
-        placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" ${isHardcoded ? 'readonly' : ''} />
-      ${isHardcoded ? '<span class="text-xs text-muted">Để thay đổi, sửa trực tiếp trong file HTML tại dòng <code>HARDCODED_GAS_URL</code></span>'
-                    : '<span class="text-xs text-muted">Bắt đầu bằng https://script.google.com/macros/s/</span>'}
-    </div>
-  `, [
-    { label: 'Đóng', onclick: 'closeModal()' },
-    ...(isHardcoded ? [] : [{ label: '💾 Lưu tạm & Kiểm tra', class: 'btn-primary', onclick: 'saveGasUrlFromModal()' }])
-  ]);
-}
-
-async function saveGasUrlFromModal() {
-  const url = (document.getElementById('gas-url-input').value || '').trim();
-  if (url && !url.startsWith('https://script.google.com/macros/s/')) {
-    toast('URL không hợp lệ. Phải bắt đầu bằng https://script.google.com/macros/s/', 'error'); return;
-  }
-  setGasUrl(url);
-  closeModal();
-  if (url) {
-    toast('Đang kiểm tra kết nối…', 'info');
-    try {
-      const res = await fetch(url + '?action=ping');
-      const json = JSON.parse(await res.text());
-      if (json.status === 'ok') {
-        toast('✅ Kết nối thành công! Sync đã được bật.', 'success');
-        if (typeof render === 'function') render();
-      } else throw new Error(json.message);
-    } catch (e) {
-      toast('⚠️ Lưu URL nhưng kiểm tra thất bại: ' + e.message, 'warning', 6000);
-    }
-  } else {
-    toast('Đã tắt sync Google Sheets', 'warning');
-    if (typeof render === 'function') render();
-  }
-}
-
 /* ============================================================
    UTILITIES
    ============================================================ */
+function uid(prefix = '') {
+  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '—';
+  return dt.toLocaleDateString('vi-VN');
+}
+function fmtMoney(n) {
+  if (n === null || n === undefined || n === '') return '—';
+  return Number(n).toLocaleString('vi-VN') + ' đ';
+}
+function daysBetween(d1, d2) {
+  const a = new Date(d1), b = new Date(d2);
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg, type = 'info', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
 function uid(prefix = '') {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
@@ -2423,37 +2451,24 @@ function renderConfig(content, actions) {
   </div>`;
 
   html += `<div class="card">
-    <div class="card-header"><h3 class="card-title">☁️ Đồng bộ Google Sheets</h3></div>
-    <p class="text-muted mb-3">Dữ liệu được lưu trên Google Sheets và đồng bộ tự động khi lưu. Mọi máy tính mở file đều dùng chung một nguồn dữ liệu.</p>
+    <div class="card-header"><h3 class="card-title">🔴 Đồng bộ Firebase Realtime</h3></div>
+    <p class="text-muted mb-3">Dữ liệu đồng bộ <strong>tức thì</strong> tới tất cả máy đang mở — không cần F5, không cần thao tác gì. Máy A lưu → Máy B nhận trong vòng &lt;1 giây.</p>
     <div class="info-grid mb-3">
       <div class="info-item">
         <span class="info-label">Trạng thái</span>
-        <span class="info-value" style="color:${hasSyncEnabled()?'#16a34a':'#dc2626'}">${hasSyncEnabled() ? '✅ Đang bật' : '❌ Chưa cấu hình'}</span>
+        <span class="info-value" style="color:${_fbDatabase?'#16a34a':'#dc2626'}">${_fbDatabase ? '✅ Đã kết nối Firebase' : '❌ Chưa kết nối'}</span>
       </div>
       <div class="info-item">
-        <span class="info-label">Web App URL</span>
-        <span class="info-value text-xs" style="word-break:break-all">${getGasUrl() ? getGasUrl().slice(0,60)+'…' : '— Chưa có —'}</span>
+        <span class="info-label">Database URL</span>
+        <span class="info-value text-xs">${FIREBASE_DB_URL || '—'}</span>
       </div>
     </div>
     <div class="flex gap-2 flex-wrap">
-      <button class="btn btn-primary lead-only" onclick="configureGasUrl()">⚙️ Cấu hình URL</button>
-      <button class="btn btn-success lead-only" onclick="manualPushCloud()">⬆️ Đẩy lên Sheets ngay</button>
-      <button class="btn lead-only" onclick="manualPullCloud()">⬇️ Kéo từ Sheets về</button>
+      <button class="btn btn-success lead-only" onclick="manualPushCloud()">⬆️ Đẩy lên Firebase ngay</button>
+      <button class="btn lead-only" onclick="manualPullCloud()">⬇️ Kéo từ Firebase về</button>
     </div>
-    <div class="mt-3" style="background:#f0f9ff;border-left:4px solid #0ea5e9;padding:12px 14px;border-radius:6px;font-size:12px;color:#0c4a6e">
-      <strong>📋 Hướng dẫn thiết lập (làm 1 lần):</strong><br>
-      <ol style="margin:8px 0 0;padding-left:18px;line-height:2">
-        <li>Vào <a href="https://sheets.google.com" target="_blank" style="color:#0ea5e9">sheets.google.com</a> → Tạo Google Sheet mới → đặt tên tùy ý (VD: <em>QLTKPCCC_Data</em>)</li>
-        <li>Trong Sheet, vào menu <strong>Extensions → Apps Script</strong></li>
-        <li>Xóa code mặc định, dán đoạn code Apps Script (xem bên dưới)</li>
-        <li>Nhấn <strong>Deploy → New deployment</strong> → Type: <em>Web app</em> → Execute as: <em>Me</em> → Who has access: <em>Anyone</em> → Deploy</li>
-        <li>Copy <strong>Web App URL</strong> → Dán vào ô "Cấu hình URL" ở trên</li>
-      </ol>
-    </div>
-    <div class="mt-3">
-      <div style="font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:6px">📄 Code Apps Script (copy toàn bộ):</div>
-      <pre id="gas-code-block" style="background:#1e293b;color:#e2e8f0;padding:14px;border-radius:6px;font-size:11px;overflow-x:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all">${escapeHtml(getAppsScriptCode())}</pre>
-      <button class="btn btn-sm mt-2" onclick="copyGasCode()">📋 Copy code</button>
+    <div class="mt-3" style="background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 14px;border-radius:6px;font-size:12px;color:#14532d">
+      ✅ <strong>Firebase đã được nhúng sẵn trong file.</strong> Không cần cấu hình thêm gì. Mọi máy mở file đều tự kết nối và đồng bộ realtime.
     </div>
   </div>`;
 
@@ -2685,95 +2700,6 @@ function showConfirm(message, onConfirm) {
   ]);
 }
 
-function getAppsScriptCode() {
-  return `// ====================================================
-// Google Apps Script cho Quản lý Thiết kế PCCC
-// Hướng dẫn: Deploy → New deployment → Web app
-//   Execute as: Me | Who has access: Anyone
-// ====================================================
-
-const SHEET_NAME = 'AppData';
-const DATA_CELL  = 'A1';       // Toàn bộ JSON lưu ở ô A1
-
-function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || 'load';
-
-  if (action === 'ping') {
-    return jsonResponse({ status: 'ok', message: 'pong' });
-  }
-
-  if (action === 'load') {
-    try {
-      const sheet = getOrCreateSheet();
-      const cell  = sheet.getRange(DATA_CELL);
-      const value = cell.getValue();
-      if (!value) return jsonResponse({ status: 'empty' });
-      const payload = JSON.parse(value);
-      return jsonResponse({ status: 'ok', payload });
-    } catch (err) {
-      return jsonResponse({ status: 'error', message: err.message });
-    }
-  }
-
-  return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
-}
-
-function doPost(e) {
-  try {
-    const body   = JSON.parse(e.postData.contents);
-    const action = body.action || 'save';
-
-    if (action === 'save') {
-      const sheet = getOrCreateSheet();
-      sheet.getRange(DATA_CELL).setValue(JSON.stringify(body.payload));
-      // Ghi thêm metadata ở B1 để dễ debug
-      sheet.getRange('B1').setValue('Cập nhật: ' + new Date().toLocaleString('vi-VN'));
-      return jsonResponse({ status: 'ok', message: 'Saved' });
-    }
-
-    return jsonResponse({ status: 'error', message: 'Unknown action' });
-  } catch (err) {
-    return jsonResponse({ status: 'error', message: err.message });
-  }
-}
-
-function getOrCreateSheet() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let   sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
-    sheet.getRange('A1:B1').setFontSize(10);
-  }
-  return sheet;
-}
-
-function jsonResponse(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}`;
-}
-
-function copyGasCode() {
-  const code = getAppsScriptCode();
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code)
-      .then(() => toast('✅ Đã copy code Apps Script!', 'success'))
-      .catch(() => fallbackCopy(code));
-  } else {
-    fallbackCopy(code);
-  }
-}
-function fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-  toast('✅ Đã copy code Apps Script!', 'success');
-}
 
 /* ============================================================
    INIT
@@ -2781,20 +2707,12 @@ function fallbackCopy(text) {
 document.querySelectorAll('.nav-item').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.view));
 });
-
-// Close modal on overlay click
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'modal-overlay') closeModal();
 });
-
-// ESC closes modal
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
 });
-
-loadState();
-loadRole();
-applyRoleUI();
 
 function setLoadingMsg(msg, pct) {
   const m = document.getElementById('loading-msg');
@@ -2807,21 +2725,32 @@ function hideLoading() {
   if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 350); }
 }
 
-async function initApp() {
-  if (hasSyncEnabled()) {
-    setLoadingMsg('☁️ Đang tải dữ liệu từ Google Sheets…', 30);
+// Được gọi từ Firebase module script ở cuối file sau khi SDK sẵn sàng
+window.initApp = async function initApp(firebaseDb) {
+  _fbDatabase = firebaseDb || null;
+
+  loadState();
+  loadRole();
+  applyRoleUI();
+
+  if (_fbDatabase) {
+    setLoadingMsg('🔴 Đang kết nối Firebase…', 20);
     try {
-      await pullFromCloud();
-      setLoadingMsg('✅ Tải dữ liệu thành công!', 100);
+      const ok = await pullFromCloud();
+      setLoadingMsg(ok ? '✅ Đã tải dữ liệu!' : '📂 Firebase trống, dùng dữ liệu local', 100);
       updateLastSaved();
     } catch(e) {
-      setLoadingMsg('⚠️ Không kết nối được cloud, dùng dữ liệu local.', 100);
+      setLoadingMsg('⚠️ Lỗi kết nối, dùng dữ liệu local', 100);
       await new Promise(r => setTimeout(r, 800));
     }
-    await new Promise(r => setTimeout(r, 400)); // brief pause để user thấy kết quả
+    await new Promise(r => setTimeout(r, 400));
+    updateSyncStatus('ok');
+    // Bắt đầu lắng nghe thay đổi realtime
+    startRealtimeListener();
   } else {
     setLoadingMsg('📂 Đang khởi động…', 100);
     await new Promise(r => setTimeout(r, 300));
+    updateSyncStatus('off');
   }
 
   hideLoading();
@@ -2830,11 +2759,33 @@ async function initApp() {
     showLoginScreen();
   } else {
     render();
-    if (hasSyncEnabled()) toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000);
   }
 }
 
-initApp();
+// FIREBASE_DB_URL dùng cho REST API (fetch)
+const FIREBASE_DB_URL = 'https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app';
+</script>
+
+<!-- Firebase SDK (module) — khởi tạo sau khi JS chính đã load -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
+    authDomain: "qltkpccc.firebaseapp.com",
+    databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "qltkpccc",
+    storageBucket: "qltkpccc.firebasestorage.app",
+    messagingSenderId: "426163323845",
+    appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  // Gọi initApp với Firebase db instance (hàm định nghĩa ở script chính)
+  window.initApp(db);
 </script>
 </body>
 </html>
