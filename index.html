@@ -2703,31 +2703,27 @@ window.initApp = async function initApp() {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-  // Khởi động toàn bộ app sau khi DOM + Firebase SDK đều sẵn sàng
-  document.addEventListener('DOMContentLoaded', function() {
-    try {
-      const firebaseConfig = {
-        apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
-        authDomain: "qltkpccc.firebaseapp.com",
-        databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "qltkpccc",
-        storageBucket: "qltkpccc.firebasestorage.app",
-        messagingSenderId: "426163323845",
-        appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
-      };
-
-      firebase.initializeApp(firebaseConfig);
-      _fbDatabase = firebase.database();
-      _fbRef      = _fbDatabase.ref('appdata');
-
-      console.log('Firebase ready, starting app...');
-    } catch(e) {
-      console.error('Firebase init failed:', e);
-      _fbDatabase = null;
-      _fbRef      = null;
-    }
-    window.initApp();
-  });
+  // Script này chạy SAU khi DOM đã load xong → gọi trực tiếp, không cần DOMContentLoaded
+  try {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBSnp12USGMdR98ym362TxTy0XLjFVbaKw",
+      authDomain: "qltkpccc.firebaseapp.com",
+      databaseURL: "https://qltkpccc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "qltkpccc",
+      storageBucket: "qltkpccc.firebasestorage.app",
+      messagingSenderId: "426163323845",
+      appId: "1:426163323845:web:8c0463b8bb0312d81c01ac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    _fbDatabase = firebase.database();
+    _fbRef      = _fbDatabase.ref('appdata');
+    console.log('✅ Firebase ready');
+  } catch(e) {
+    console.error('❌ Firebase init failed:', e);
+    _fbDatabase = null;
+    _fbRef      = null;
+  }
+  window.initApp();
 </script>
 </body>
 </html>
