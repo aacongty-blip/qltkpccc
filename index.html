@@ -816,19 +816,13 @@ let state = {
 };
 
 /* ============================================================
-   FIREBASE CONFIG & REALTIME SYNC
-   ============================================================ */
-// Firebase tự push dữ liệu mới về tất cả máy đang mở — không cần polling
-let _fbUnsubscribe = null; // hàm huỷ listener khi cần
-let _isSavingToCloud = false; // tránh vòng lặp: save → trigger listener → save lại
-
-/* ============================================================
    FIREBASE REALTIME SYNC — dùng SDK chính thức
    onValue listener: server push về client ngay khi có thay đổi
    ============================================================ */
-let _fbDatabase  = null;
-let _fbRef       = null;
-let _fbListener  = null;
+let _fbDatabase      = null;
+let _fbRef           = null;
+let _fbListener      = null;
+let _fbUnsubscribe   = null;
 let _isSavingToCloud = false;
 
 function hasSyncEnabled() { return !!_fbDatabase; }
