@@ -1,0 +1,2797 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Công ty AA - Quản lý Thiết kế PCCC</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --primary: #1e40af;
+    --primary-dark: #1e3a8a;
+    --primary-light: #3b82f6;
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius: 8px;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--gray-800);
+    background: var(--gray-100);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; font-size: 14px; }
+
+  /* Layout */
+  #app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; background: var(--gray-900); color: #cbd5e1;
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 18px 20px; border-bottom: 1px solid #334155;
+    color: #fff;
+  }
+  .sidebar-header h1 { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .sidebar-header h1 svg { flex-shrink: 0; }
+  .sidebar-header .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .nav-list { list-style: none; padding: 12px 0; margin: 0; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 11px 20px;
+    cursor: pointer; transition: background 0.15s; border-left: 3px solid transparent;
+    font-size: 14px;
+  }
+  .nav-item:hover { background: #1e293b; color: #fff; }
+  .nav-item.active { background: #1e293b; color: #fff; border-left-color: var(--primary-light); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer {
+    padding: 14px 20px; border-top: 1px solid #334155;
+    font-size: 11px; color: #64748b;
+  }
+  .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    background: #fff; padding: 14px 24px; border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+  }
+  .topbar h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--gray-900); }
+  .topbar-actions { display: flex; gap: 8px; }
+  .content-area { padding: 24px; overflow-y: auto; flex: 1; }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 14px; border: 1px solid var(--gray-300); border-radius: 6px;
+    background: #fff; color: var(--gray-700); font-size: 13px; font-weight: 500;
+    transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--gray-50); border-color: var(--gray-400); }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+  .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+  .btn-success:hover { background: #15803d; }
+  .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-warning { background: var(--warning); color: #fff; border-color: var(--warning); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px 8px; }
+
+  /* Cards */
+  .card {
+    background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; margin-bottom: 16px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-200);
+  }
+  .card-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--gray-900); }
+
+  /* Stat cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: #fff; border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow);
+    border-left: 4px solid var(--primary);
+  }
+  .stat-card.success { border-left-color: var(--success); }
+  .stat-card.warning { border-left-color: var(--warning); }
+  .stat-card.danger { border-left-color: var(--danger); }
+  .stat-label { font-size: 12px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--gray-900); }
+  .stat-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); }
+  table.data-table { width: 100%; border-collapse: collapse; }
+  table.data-table th {
+    background: var(--gray-50); padding: 12px 14px; text-align: left;
+    font-size: 12px; font-weight: 600; color: var(--gray-600);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-200); white-space: nowrap;
+  }
+  table.data-table td {
+    padding: 12px 14px; border-bottom: 1px solid var(--gray-200); font-size: 13px;
+    color: var(--gray-800); vertical-align: middle;
+  }
+  table.data-table tr:hover { background: var(--gray-50); }
+  table.data-table tr:last-child td { border-bottom: none; }
+  table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table .center { text-align: center; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .badge-default { background: var(--gray-200); color: var(--gray-700); }
+  .badge-success { background: #dcfce7; color: #166534; }
+  .badge-warning { background: #fef3c7; color: #92400e; }
+  .badge-danger { background: #fee2e2; color: #991b1b; }
+  .badge-info { background: #dbeafe; color: #1e40af; }
+  .badge-progress { background: #e0e7ff; color: #3730a3; }
+
+  /* Progress bar */
+  .progress {
+    height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden;
+    width: 100%; min-width: 80px;
+  }
+  .progress-bar {
+    height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.3s;
+  }
+  .progress-bar.success { background: var(--success); }
+  .progress-bar.warning { background: var(--warning); }
+  .progress-bar.danger { background: var(--danger); }
+
+  /* Status row colors */
+  tr.row-warning { background: #fef9e7 !important; }
+  tr.row-warning:hover { background: #fef3c7 !important; }
+  tr.row-danger { background: #fef2f2 !important; }
+  tr.row-danger:hover { background: #fee2e2 !important; }
+  tr.row-success { background: #f0fdf4 !important; }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--gray-700); }
+  .form-label.required::after { content: " *"; color: var(--danger); }
+  .form-input, .form-select, .form-textarea {
+    padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px;
+    background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+  .form-textarea { min-height: 70px; resize: vertical; font-family: inherit; }
+  .form-section-title { margin: 18px 0 10px; padding: 8px 12px; background: var(--gray-100); border-left: 3px solid var(--primary); font-size: 13px; font-weight: 600; color: var(--gray-700); border-radius: 4px; }
+  .form-section-title:first-child { margin-top: 0; }
+  .global-alert { padding: 12px 16px; background: #fee2e2; border-left: 4px solid var(--danger); border-radius: 6px; margin-bottom: 16px; color: #991b1b; font-weight: 500; box-shadow: var(--shadow-sm); }
+  .global-alert a { color: #991b1b; text-decoration: underline; margin-left: 4px; }
+  .global-alert a:hover { color: #7f1d1d; }
+  .payment-bar { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .payment-progress { flex: 1; height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+  .payment-progress-bar { height: 100%; background: var(--success); transition: width 0.3s; }
+
+  /* Role-based UI gating */
+  body.designer-mode .lead-only { display: none !important; }
+
+  /* Login screen */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 2000;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #login-screen.hidden { display: none; }
+  .login-card {
+    background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg);
+    width: 92%; max-width: 540px; padding: 30px 36px;
+  }
+  .login-title { text-align: center; margin: 8px 0 4px; font-size: 18px; color: var(--gray-900); font-weight: 700; line-height: 1.3; }
+  .login-sub { text-align: center; color: var(--gray-500); margin-bottom: 24px; font-size: 13px; }
+  .login-icon-big { font-size: 56px; text-align: center; margin-bottom: 12px; }
+  .login-icon-big svg { display: block; margin: 0 auto; }
+  .role-cards { display: flex; flex-direction: column; gap: 12px; }
+  .role-card {
+    display: flex; align-items: center; gap: 14px; padding: 16px;
+    background: #fff; border: 2px solid var(--gray-200); border-radius: 10px;
+    cursor: pointer; transition: all 0.15s; text-align: left; width: 100%;
+    font-family: inherit;
+  }
+  .role-card:hover { border-color: var(--primary); background: #f8faff; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .role-card-icon { font-size: 32px; flex-shrink: 0; }
+  .role-card-content { flex: 1; }
+  .role-card-name { font-size: 15px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; }
+  .role-card-desc { font-size: 12px; color: var(--gray-500); }
+  .login-info { background: #fef3c7; border-left: 4px solid var(--warning); padding: 10px 12px; border-radius: 4px; font-size: 12px; margin-top: 16px; color: #78350f; }
+
+  /* User indicator in sidebar */
+  .sidebar-user-box {
+    padding: 12px 16px; border-top: 1px solid #334155;
+    background: #1e293b;
+  }
+  .sidebar-user-name { color: #fff; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .sidebar-user-role { color: #94a3b8; font-size: 11px; margin-bottom: 8px; }
+  .sidebar-user-role.lead { color: #86efac; }
+  .sidebar-user-role.designer { color: #93c5fd; }
+  .btn-logout-sidebar {
+    width: 100%; padding: 6px; background: transparent; color: #cbd5e1;
+    border: 1px solid #334155; border-radius: 6px; font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-logout-sidebar:hover { background: #1e3a8a; color: #fff; }
+
+  .role-banner { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; font-weight: 500; }
+  .role-banner.designer { background: #dbeafe; border-left: 4px solid var(--primary); color: #1e3a8a; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.18s;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    width: 90%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column;
+    animation: slideUp 0.2s;
+  }
+  .modal.modal-lg { max-width: 1100px; }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { margin: 0; font-size: 16px; font-weight: 600; }
+  .modal-close {
+    background: none; border: none; font-size: 22px; color: var(--gray-500); cursor: pointer;
+    width: 32px; height: 32px; border-radius: 6px;
+  }
+  .modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 14px 20px; border-top: 1px solid var(--gray-200);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; top: 20px; right: 20px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 12px 16px; border-radius: 6px; box-shadow: var(--shadow-lg);
+    background: #fff; color: var(--gray-800); border-left: 4px solid var(--primary);
+    min-width: 240px; animation: slideRight 0.2s; font-size: 13px;
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.warning { border-left-color: var(--warning); }
+  @keyframes slideRight { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* Utility */
+  .flex { display: flex; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-2 { margin-bottom: 8px; }
+  .mb-3 { margin-bottom: 12px; }
+  .mb-4 { margin-bottom: 16px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-4 { margin-top: 16px; }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .text-muted { color: var(--gray-500); }
+  .text-bold { font-weight: 600; }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--gray-500); }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+  .search-bar { position: relative; }
+  .search-bar input {
+    padding: 8px 12px 8px 32px; border: 1px solid var(--gray-300); border-radius: 6px;
+    background: #fff; min-width: 240px;
+  }
+  .search-bar::before {
+    content: "🔍"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 12px;
+  }
+
+  /* Project detail */
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .info-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--gray-50); border-radius: 6px; border: 1px solid var(--gray-200); }
+  .info-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); font-weight: 600; }
+  .info-value { font-size: 14px; color: var(--gray-900); font-weight: 500; word-break: break-word; }
+  .info-value.large { font-size: 18px; font-weight: 700; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 2px solid var(--gray-200); margin-bottom: 18px; }
+  .tab {
+    padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; font-weight: 500; color: var(--gray-600); font-size: 14px;
+  }
+  .tab:hover { color: var(--primary); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+  /* Action toolbar */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .toolbar-spacer { flex: 1; }
+
+  /* Color legend */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 14px; background: var(--gray-50); border-radius: 6px; font-size: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* Confirm dialog */
+  .confirm-msg { padding: 12px; background: #fef9e7; border-left: 4px solid var(--warning); border-radius: 4px; }
+
+  /* Print */
+  @media print {
+    .sidebar, .topbar, .toolbar, .btn { display: none !important; }
+    .content-area { padding: 0; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <div class="login-icon-big"><svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:96px;height:96px;display:block;margin:0 auto"><circle cx="100" cy="100" r="90" fill="#fff" stroke="#C8A540" stroke-width="7"/><path d="M 100 32 L 64 168 M 100 32 L 136 168" stroke="#1E40AF" stroke-width="12" fill="none" stroke-linecap="butt"/><path d="M 100 73 L 80 162 M 100 73 L 120 162" stroke="#C8A540" stroke-width="9" fill="none" stroke-linecap="butt"/><path d="M 45 118 Q 100 100 155 116" stroke="#DC2626" stroke-width="8" fill="none" stroke-linecap="round"/></svg></div>
+    <h2 class="login-title">CÔNG TY CP XÂY DỰNG VÀ CƠ ĐIỆN AA</h2>
+    <div class="login-sub" style="font-size:14px;font-weight:600;color:var(--primary);letter-spacing:1px">QUẢN LÝ THIẾT KẾ</div>
+
+    <!-- Role selection (default visible) -->
+    <div id="login-role-section">
+      <div class="role-cards" style="margin-top:20px">
+        <button class="role-card" onclick="loginAsLead()">
+          <div class="role-card-icon">🛡️</div>
+          <div class="role-card-content">
+            <div class="role-card-name">Quản lý / Admin</div>
+            <div class="role-card-desc">Toàn quyền: thêm/sửa/xóa dự án, nhân viên, nhiệm vụ, đặt/đổi mật khẩu cho thành viên. Cần mật khẩu Admin.</div>
+          </div>
+        </button>
+        <button class="role-card" onclick="showDesignerLoginInline()">
+          <div class="role-card-icon">🧑‍🎨</div>
+          <div class="role-card-content">
+            <div class="role-card-name">Thành viên Thiết kế</div>
+            <div class="role-card-desc">Xem dự án + cập nhật tiến độ nhiệm vụ được giao. Cần tên + mật khẩu (do Quản lý cấp).</div>
+          </div>
+        </button>
+      </div>
+      <div id="login-info-banner" class="login-info" style="display:none">
+        💡 <strong>Lần đầu sử dụng:</strong> Khi đăng nhập với vai trò Quản lý, anh sẽ được yêu cầu đặt mật khẩu quản trị.
+      </div>
+    </div>
+
+    <!-- Designer login form (hidden by default, appears inline when clicking Thành viên TK) -->
+    <div id="login-designer-section" style="display:none;margin-top:20px">
+      <button type="button" class="btn" onclick="showRoleSelection()" style="margin-bottom:14px">← Quay lại chọn vai trò</button>
+      <h3 style="margin:0 0 12px;font-size:16px;color:var(--gray-900)">🧑‍🎨 Đăng nhập Thành viên Thiết kế</h3>
+      <div id="login-designer-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:28px;height:28px;vertical-align:middle;margin-right:6px"><circle cx="100" cy="100" r="90" fill="#fff" stroke="#C8A540" stroke-width="9"/><path d="M 100 32 L 64 168 M 100 32 L 136 168" stroke="#1E40AF" stroke-width="14" fill="none"/><path d="M 100 73 L 80 162 M 100 73 L 120 162" stroke="#C8A540" stroke-width="11" fill="none"/><path d="M 45 118 Q 100 100 155 116" stroke="#DC2626" stroke-width="10" fill="none" stroke-linecap="round"/></svg><span>CÔNG TY AA</span></h1>
+      <div class="subtitle">Quản lý thiết kế · v6</div>
+    </div>
+    <ul class="nav-list" id="nav-list">
+      <li class="nav-item active" data-view="dashboard"><span class="nav-icon">📊</span> Dashboard</li>
+      <li class="nav-item" data-view="my_tasks" id="nav-my-tasks" style="display:none"><span class="nav-icon">📌</span> Việc của tôi</li>
+      <li class="nav-item" data-view="projects"><span class="nav-icon">🏗️</span> Dự án</li>
+      <li class="nav-item" data-view="employees"><span class="nav-icon">👥</span> Nhân viên</li>
+      <li class="nav-item" data-view="reports"><span class="nav-icon">📈</span> Báo cáo</li>
+      <li class="nav-item lead-only" data-view="config"><span class="nav-icon">⚙️</span> Cấu hình</li>
+    </ul>
+    <div class="sidebar-user-box" id="sidebar-user-box" style="display:none">
+      <div class="sidebar-user-name" id="sidebar-user-name">—</div>
+      <div class="sidebar-user-role" id="sidebar-user-role">—</div>
+      <button class="btn-logout-sidebar" id="btn-change-pwd" onclick="changeMyPassword()" style="display:none;margin-bottom:6px">🔑 Đổi mật khẩu</button>
+      <button class="btn-logout-sidebar" onclick="logout()">🚪 Đăng xuất / Đổi vai trò</button>
+    </div>
+    <div class="sidebar-footer">
+      <div>v7.0 · Google Sheets Sync · Có phân quyền</div>
+      <div id="last-saved" style="margin-top:4px;">—</div>
+      <div id="sync-status" style="margin-top:4px;font-size:10px;color:#94a3b8;">☁️ Chưa cấu hình sync</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <header class="topbar">
+      <h2 id="page-title">Dashboard</h2>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </header>
+    <div class="content-area" id="content"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   ROLE MANAGEMENT (Phân quyền)
+   ============================================================ */
+const ROLE_KEY = 'ql_thietke_pccc_role_v1';
+const ADMIN_PIN_KEY = 'ql_thietke_pccc_pin_v1';
+
+let currentRole = null;        // 'lead' | 'designer'
+let currentUserName = null;
+let currentUserEmpId = null;   // For designers: links to employee record
+
+// Simple hash (NOT cryptographically secure - just to avoid storing plain text)
+function simpleHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) + str.charCodeAt(i);
+    h = h & 0xFFFFFFFF;
+  }
+  return h.toString(36) + str.length.toString(36);
+}
+
+function loadRole() {
+  try {
+    const raw = sessionStorage.getItem(ROLE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      currentRole = p.role;
+      currentUserName = p.name;
+      currentUserEmpId = p.empId || null;
+    }
+  } catch (e) {}
+}
+
+function saveRole(role, name, empId) {
+  currentRole = role;
+  currentUserName = name;
+  currentUserEmpId = empId || null;
+  sessionStorage.setItem(ROLE_KEY, JSON.stringify({ role, name, empId: empId || null, ts: Date.now() }));
+  applyRoleUI();
+}
+
+function applyRoleUI() {
+  document.body.classList.toggle('designer-mode', currentRole === 'designer');
+  // Show "Việc của tôi" only for designers (linked to employee)
+  const myTasksNav = document.getElementById('nav-my-tasks');
+  if (myTasksNav) {
+    myTasksNav.style.display = (currentRole === 'designer' && currentUserEmpId) ? 'flex' : 'none';
+  }
+  // Show "Đổi mật khẩu" only for designers (linked to employee)
+  const changePwdBtn = document.getElementById('btn-change-pwd');
+  if (changePwdBtn) {
+    changePwdBtn.style.display = (currentRole === 'designer' && currentUserEmpId) ? 'block' : 'none';
+  }
+  const box = document.getElementById('sidebar-user-box');
+  if (!box) return;
+  if (currentRole) {
+    box.style.display = 'block';
+    document.getElementById('sidebar-user-name').textContent = currentUserName || (currentRole === 'lead' ? 'Trưởng nhóm' : 'Thành viên');
+    const r = document.getElementById('sidebar-user-role');
+    r.className = 'sidebar-user-role ' + currentRole;
+    if (currentRole === 'lead') {
+      r.textContent = '🛡️ Quản lý (toàn quyền)';
+    } else if (currentRole === 'designer') {
+      const linked = currentUserEmpId ? '✓ đã liên kết NV' : '⚠ chưa liên kết';
+      r.textContent = `🧑‍🎨 Thành viên TK (${linked})`;
+    } else {
+      r.textContent = currentRole;
+    }
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function isLead() { return currentRole === 'lead'; }
+function isDesignerRole() { return currentRole === 'designer'; }
+function canEdit() { return isLead(); }
+
+function showLoginScreen() {
+  document.getElementById('login-screen').classList.remove('hidden');
+  const hasPin = !!localStorage.getItem(ADMIN_PIN_KEY);
+  document.getElementById('login-info-banner').style.display = hasPin ? 'none' : 'block';
+  // Always start at role selection view
+  showRoleSelection();
+}
+
+function hideLoginScreen() {
+  document.getElementById('login-screen').classList.add('hidden');
+}
+
+function loginAsLead() {
+  const hasPin = !!localStorage.getItem(ADMIN_PIN_KEY);
+  if (!hasPin) {
+    // Setup mode: ask user to set up PIN
+    const pin1 = prompt('🔐 LẦN ĐẦU SỬ DỤNG\n\nVui lòng đặt mật khẩu Quản lý (≥4 ký tự).\nMật khẩu này dùng để bảo vệ quyền chỉnh sửa.');
+    if (!pin1) return;
+    if (pin1.length < 4) { alert('Mật khẩu phải có ít nhất 4 ký tự'); return; }
+    const pin2 = prompt('Nhập lại mật khẩu để xác nhận:');
+    if (pin1 !== pin2) { alert('Mật khẩu không khớp. Vui lòng thử lại.'); return; }
+    localStorage.setItem(ADMIN_PIN_KEY, simpleHash(pin1));
+    alert('✅ Đã đặt mật khẩu Quản lý thành công!\n\nLưu ý: ghi nhớ mật khẩu, nếu quên phải reset toàn bộ dữ liệu để tạo lại.');
+    saveRole('lead', 'Quản lý');
+    hideLoginScreen();
+    render();
+    toast('Đăng nhập thành công với vai trò Quản lý', 'success');
+    if (hasSyncEnabled()) {
+      pullFromCloud().then(ok => { if (ok) { updateLastSaved(); render(); toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000); } });
+    }
+  } else {
+    const pin = prompt('🔐 Nhập mật khẩu Quản lý:');
+    if (!pin) return;
+    if (simpleHash(pin) !== localStorage.getItem(ADMIN_PIN_KEY)) {
+      alert('❌ Mật khẩu không đúng!');
+      return;
+    }
+    saveRole('lead', 'Quản lý');
+    hideLoginScreen();
+    render();
+    toast('Đăng nhập thành công với vai trò Quản lý', 'success');
+    if (hasSyncEnabled()) {
+      pullFromCloud().then(ok => { if (ok) { updateLastSaved(); render(); toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000); } });
+    }
+  }
+}
+
+function showDesignerLoginInline() {
+  // Switch login screen view: hide role cards, show designer form
+  document.getElementById('login-role-section').style.display = 'none';
+  document.getElementById('login-designer-section').style.display = 'block';
+  // Populate the inline content with dropdown + password
+  const designers = state.employees.filter(e => e.status === 'Đang làm');
+  const container = document.getElementById('login-designer-content');
+  if (designers.length === 0) {
+    container.innerHTML = `
+      <div class="login-info" style="background:#fef3c7;border-left-color:var(--warning);color:#78350f">
+        ⚠️ <strong>Chưa có danh sách nhân viên!</strong><br>
+        Quản lý chưa tạo danh sách NV trong hệ thống. Vui lòng đăng nhập với vai trò Quản lý trước, vào "Nhân viên" để thêm NV và cấp mật khẩu cho từng người.
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = `
+    <p class="text-sm text-muted mb-3">Chọn tên của bạn và nhập mật khẩu (do Quản lý cấp):</p>
+    <div class="form-group">
+      <label class="form-label required">Bạn là nhân viên nào?</label>
+      <select class="form-select" id="login-emp-id" style="width:100%">
+        <option value="">— Chọn nhân viên —</option>
+        ${designers.map(e => `<option value="${e.id}">${escapeHtml(e.fullName)} (${escapeHtml(e.role)})</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label required">Mật khẩu</label>
+      <input type="password" class="form-input" id="login-emp-pwd" style="width:100%" placeholder="Mật khẩu do Quản lý cấp" autocomplete="off" />
+      <span class="text-xs text-muted">Mặc định lần đầu: <code>12345</code> (nếu Quản lý chưa đổi). Sau đăng nhập có thể tự đổi MK.</span>
+    </div>
+    <button type="button" class="btn btn-primary" style="width:100%;margin-top:14px;padding:10px" onclick="confirmDesignerLogin()">Đăng nhập →</button>
+    <div class="login-info" style="margin-top:14px">
+      💡 Nếu quên mật khẩu, liên hệ Quản lý để được reset. Mật khẩu giúp xác định đúng người cập nhật tiến độ.
+    </div>
+  `;
+  // Auto-focus + Enter key support
+  setTimeout(() => {
+    const sel = document.getElementById('login-emp-id');
+    const pwd = document.getElementById('login-emp-pwd');
+    if (sel) {
+      sel.focus();
+      sel.addEventListener('change', () => pwd && pwd.focus());
+    }
+    if (pwd) pwd.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') confirmDesignerLogin(); });
+  }, 100);
+}
+
+function showRoleSelection() {
+  document.getElementById('login-designer-section').style.display = 'none';
+  document.getElementById('login-role-section').style.display = 'block';
+}
+
+// Backward-compat alias (in case old code still references)
+function loginAsDesigner() { showDesignerLoginInline(); }
+
+function confirmDesignerLogin() {
+  const empId = document.getElementById('login-emp-id').value;
+  const pwd = document.getElementById('login-emp-pwd').value;
+  if (!empId) return toast('Vui lòng chọn nhân viên trong danh sách', 'error');
+  if (!pwd) return toast('Vui lòng nhập mật khẩu', 'error');
+  const emp = state.employees.find(e => e.id === empId);
+  if (!emp) return toast('Không tìm thấy nhân viên', 'error');
+  // Verify password
+  if (!emp.passwordHash) {
+    return toast('NV này chưa được Quản lý đặt mật khẩu. Liên hệ Quản lý để được cấp.', 'error', 6000);
+  }
+  if (simpleHash(pwd) !== emp.passwordHash) {
+    return toast('❌ Mật khẩu không đúng. Liên hệ Quản lý nếu quên MK.', 'error', 5000);
+  }
+  saveRole('designer', emp.fullName, empId);
+  // Reset login screen state
+  showRoleSelection();
+  hideLoginScreen();
+  // Redirect designers to "My Tasks" by default
+  currentView = 'my_tasks';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === 'my_tasks'));
+  render();
+  // Suggest changing password if still default
+  if (pwd === '12345') {
+    toast(`Xin chào ${emp.fullName}! Đề nghị đổi mật khẩu mặc định trong sidebar.`, 'warning', 6000);
+  } else {
+    toast(`Xin chào ${emp.fullName}! Bạn có thể xem và cập nhật các nhiệm vụ được giao.`, 'success', 4000);
+  }
+}
+
+function logout() {
+  if (!confirm('Đăng xuất / Đổi vai trò?')) return;
+  sessionStorage.removeItem(ROLE_KEY);
+  currentRole = null;
+  currentUserName = null;
+  currentUserEmpId = null;
+  applyRoleUI();
+  showLoginScreen();
+}
+
+// Reset PIN: only available if data is fully cleared first
+function resetAdminPin() {
+  if (!confirm('⚠️ XÓA MẬT KHẨU QUẢN LÝ?\n\nThao tác này sẽ xóa mật khẩu hiện tại. Lần đăng nhập tiếp theo của Quản lý sẽ phải đặt lại mật khẩu mới.\n\nTiếp tục?')) return;
+  localStorage.removeItem(ADMIN_PIN_KEY);
+  toast('Đã reset mật khẩu Quản lý', 'success');
+}
+
+function changeMyPassword() {
+  if (currentRole !== 'designer' || !currentUserEmpId) {
+    toast('Chỉ Thành viên TK đã liên kết NV mới đổi được mật khẩu', 'error');
+    return;
+  }
+  const emp = state.employees.find(e => e.id === currentUserEmpId);
+  if (!emp) return toast('Không tìm thấy hồ sơ NV', 'error');
+  const oldPwd = prompt('🔐 ĐỔI MẬT KHẨU\n\nNhập mật khẩu hiện tại:');
+  if (!oldPwd) return;
+  if (simpleHash(oldPwd) !== emp.passwordHash) {
+    alert('❌ Mật khẩu hiện tại không đúng!');
+    return;
+  }
+  const newPwd1 = prompt('Nhập mật khẩu MỚI (≥4 ký tự):');
+  if (!newPwd1) return;
+  if (newPwd1.length < 4) { alert('Mật khẩu phải ≥4 ký tự'); return; }
+  const newPwd2 = prompt('Nhập lại mật khẩu mới để xác nhận:');
+  if (newPwd1 !== newPwd2) { alert('Hai lần nhập không khớp. Hủy đổi.'); return; }
+  emp.passwordHash = simpleHash(newPwd1);
+  saveState();
+  alert('✅ Đã đổi mật khẩu thành công!\n\nLần đăng nhập tiếp theo dùng mật khẩu mới.');
+  toast('Đổi mật khẩu thành công', 'success');
+}
+
+function canUpdateTask(task) {
+  if (isLead()) return true;
+  if (currentRole === 'designer' && currentUserEmpId && task.assigneeId === currentUserEmpId) return true;
+  return false;
+}
+
+function openMyTaskUpdate(projectId, taskId) {
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const t = project.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  if (!canUpdateTask(t)) {
+    toast('Bạn chỉ có thể cập nhật nhiệm vụ được giao cho mình', 'error');
+    return;
+  }
+  const body = `
+    <div class="info-grid mb-3">
+      <div class="info-item"><span class="info-label">Dự án</span><span class="info-value">${escapeHtml(project.name)}</span></div>
+      <div class="info-item"><span class="info-label">Hạn hoàn thành</span><span class="info-value">${deadlineDisplay(t.deadline)}</span></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nội dung thiết kế</label>
+        <input class="form-input" value="${escapeHtml(t.name)}" disabled />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="mt-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('mt-progress').value=100;document.getElementById('mt-completedDate').value=new Date().toISOString().slice(0,10);}">
+          ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiến độ %</label>
+        <input type="number" min="0" max="100" class="form-input" id="mt-progress" value="${t.progress||0}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày hoàn thành thực tế</label>
+        <input type="date" class="form-input" id="mt-completedDate" value="${t.completedDate||''}" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Ghi chú (tiến độ, vướng mắc, lý do trễ...)</label>
+        <textarea class="form-textarea" id="mt-notes">${escapeHtml(t.notes||'')}</textarea>
+      </div>
+    </div>
+    <div class="text-xs text-muted mt-2">
+      📌 Thành viên TK chỉ cập nhật được: trạng thái, tiến độ %, ngày HT, ghi chú.<br>
+      Để thay đổi nội dung, người TH, deadline... vui lòng liên hệ Trưởng nhóm.
+    </div>
+  `;
+  showModal('📝 Cập nhật tiến độ nhiệm vụ của tôi', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: 'Lưu cập nhật', class: 'btn-primary', onclick: `submitMyTaskUpdate('${projectId}','${taskId}')` }
+  ]);
+}
+
+function submitMyTaskUpdate(projectId, taskId) {
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const t = project.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  if (!canUpdateTask(t)) {
+    toast('Bạn không có quyền cập nhật nhiệm vụ này', 'error');
+    return;
+  }
+  const newProgress = parseInt(document.getElementById('mt-progress').value) || 0;
+  if (newProgress < 0 || newProgress > 100) return toast('Tiến độ phải từ 0 đến 100', 'error');
+  // Update only the allowed fields - never touch name, assignee, dates
+  t.status = document.getElementById('mt-status').value;
+  t.progress = newProgress;
+  t.completedDate = document.getElementById('mt-completedDate').value;
+  t.notes = document.getElementById('mt-notes').value.trim();
+  t.updatedAt = new Date().toISOString();
+  t.updatedBy = currentUserName;
+  saveState();
+  toast('Đã cập nhật nhiệm vụ thành công!', 'success');
+  closeModal();
+  render();
+}
+
+/* ============================================================
+   STATE & STORAGE
+   ============================================================ */
+const STORAGE_KEY = 'ql_thietke_pccc_v1';
+
+// =====================================================================
+// ★ CẤU HÌNH GOOGLE SHEETS SYNC ★
+// Dán Web App URL từ Google Apps Script vào đây (giữa 2 dấu nháy đơn)
+// Sau khi dán, lưu file lại → TẤT CẢ máy mở file này đều tự đồng bộ
+// Ví dụ: 'https://script.google.com/macros/s/ABC123.../exec'
+// =====================================================================
+const HARDCODED_GAS_URL = 'https://script.google.com/macros/s/AKfycbw4F4Ml34zIaBklnhyr0y1eE2I0-zm3tuVw8lRnCw_QpKBIWtp9MMnqE2k3lAyD9vaL/exec';   // ← DÁN URL VÀO ĐÂY
+
+const defaultConfig = {
+  thresholdPercent: 30,
+  thresholdDays: 3,
+  warningMode: 'either',
+  companyName: 'Doanh nghiệp PCCC',
+  pccc105DefaultDays: 15
+};
+
+const ROLES = ['Trưởng nhóm TK', 'KS Thiết kế cao cấp', 'Kỹ sư Thiết kế', 'Kỹ thuật viên TK', 'Dự toán viên', 'BIM Modeler', 'KTS PCCC', 'Thực tập sinh'];
+const NV_STATUS = ['Đang làm', 'Nghỉ phép', 'Nghỉ việc'];
+const PROJECT_STATUS = ['Mới tạo', 'Đang triển khai', 'Tạm dừng', 'Hoàn thành', 'Hủy'];
+const TASK_STATUS = ['Chưa bắt đầu', 'Đang thực hiện', 'Đang chờ duyệt', 'Hoàn thành', 'Tạm dừng'];
+
+let state = {
+  employees: [],
+  projects: [],
+  config: { ...defaultConfig },
+  meta: { lastSaved: null, version: 1 }
+};
+
+/* ---------- Google Apps Script helpers ---------- */
+// URL ưu tiên: hardcoded trong file → localStorage (fallback nếu chưa hardcode)
+function getGasUrl() {
+  if (HARDCODED_GAS_URL && HARDCODED_GAS_URL.startsWith('https://')) return HARDCODED_GAS_URL;
+  return localStorage.getItem('ql_thietke_pccc_gas_url') || '';
+}
+function setGasUrl(url) {
+  // Lưu vào localStorage để dùng tạm; nhắc user hardcode vào file
+  localStorage.setItem('ql_thietke_pccc_gas_url', url.trim());
+  updateSyncStatus();
+}
+function hasSyncEnabled() { return !!getGasUrl(); }
+
+function updateSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (hasSyncEnabled()) {
+    el.textContent = '☁️ Sync: Google Sheets ✓';
+    el.style.color = '#86efac';
+  } else {
+    el.textContent = '☁️ Chưa cấu hình sync';
+    el.style.color = '#94a3b8';
+  }
+}
+
+/**
+ * Gửi toàn bộ state lên Google Sheets qua Apps Script Web App.
+ * Apps Script sẽ nhận JSON và ghi vào Sheet.
+ */
+async function pushToCloud(showToast = true) {
+  const url = getGasUrl();
+  if (!url) return;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', payload: state }),
+    });
+    const text = await res.text();
+    const json = JSON.parse(text);
+    if (json.status === 'ok') {
+      if (showToast) toast('☁️ Đã đồng bộ lên Google Sheets', 'success');
+    } else {
+      throw new Error(json.message || 'Lỗi không xác định');
+    }
+  } catch (e) {
+    toast('⚠️ Sync thất bại: ' + e.message, 'error', 6000);
+    console.error('pushToCloud error:', e);
+  }
+}
+
+/**
+ * Tải dữ liệu từ Google Sheets về.
+ */
+async function pullFromCloud() {
+  const url = getGasUrl();
+  if (!url) return false;
+  try {
+    setSyncIndicator('loading');
+    const res = await fetch(url + '?action=load');
+    const text = await res.text();
+    const json = JSON.parse(text);
+    if (json.status === 'ok' && json.payload) {
+      const parsed = json.payload;
+      if (!parsed.employees || !parsed.projects) throw new Error('Dữ liệu cloud không hợp lệ');
+      state.employees = parsed.employees;
+      state.projects  = parsed.projects;
+      state.config    = { ...defaultConfig, ...(parsed.config || {}) };
+      state.meta      = parsed.meta || { lastSaved: null, version: 1 };
+      // Also cache locally so app works offline
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setSyncIndicator('ok');
+      return true;
+    } else if (json.status === 'empty') {
+      setSyncIndicator('ok');
+      return false; // Sheet rỗng, không ghi đè
+    } else {
+      throw new Error(json.message || 'Phản hồi lạ từ server');
+    }
+  } catch (e) {
+    setSyncIndicator('error');
+    toast('⚠️ Không kéo được dữ liệu cloud: ' + e.message, 'error', 6000);
+    console.error('pullFromCloud error:', e);
+    return false;
+  }
+}
+
+function setSyncIndicator(state) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (state === 'loading') { el.textContent = '☁️ Đang đồng bộ…'; el.style.color = '#fcd34d'; }
+  else if (state === 'ok')  { el.textContent = '☁️ Sync: Google Sheets ✓'; el.style.color = '#86efac'; }
+  else if (state === 'error') { el.textContent = '☁️ Sync lỗi ⚠'; el.style.color = '#fca5a5'; }
+}
+
+/* ---------- Local storage ---------- */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state.employees = parsed.employees || [];
+      state.projects  = parsed.projects  || [];
+      state.config    = { ...defaultConfig, ...(parsed.config || {}) };
+      state.meta      = parsed.meta || { lastSaved: null, version: 1 };
+    }
+  } catch (e) {
+    console.error('Lỗi tải dữ liệu:', e);
+    toast('Không tải được dữ liệu lưu trước. Bắt đầu mới.', 'error');
+  }
+  updateLastSaved();
+  updateSyncStatus();
+}
+
+/**
+ * Lưu local TRƯỚC (nhanh, không block UI), rồi push cloud bất đồng bộ.
+ */
+function saveState() {
+  state.meta.lastSaved = new Date().toISOString();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateLastSaved();
+  } catch (e) {
+    toast('Lỗi lưu local: ' + e.message, 'error');
+  }
+  // Push cloud nền, không chờ
+  if (hasSyncEnabled()) {
+    pushToCloud(false).then(() => setSyncIndicator('ok')).catch(() => setSyncIndicator('error'));
+  }
+}
+
+function updateLastSaved() {
+  const el = document.getElementById('last-saved');
+  if (!el) return;
+  if (state.meta.lastSaved) {
+    const d = new Date(state.meta.lastSaved);
+    el.textContent = '💾 ' + d.toLocaleString('vi-VN');
+  } else {
+    el.textContent = 'Chưa có dữ liệu';
+  }
+}
+
+/* ---------- Manual sync actions ---------- */
+async function manualPullCloud() {
+  if (!isLead()) { toast('Chỉ Quản lý mới được kéo dữ liệu cloud', 'error'); return; }
+  if (!hasSyncEnabled()) { toast('Chưa cấu hình URL Google Apps Script', 'error'); return; }
+  const ok = await pullFromCloud();
+  if (ok) {
+    toast('✅ Đã tải dữ liệu mới nhất từ Google Sheets!', 'success');
+    updateLastSaved();
+    render();
+  } else {
+    toast('ℹ️ Google Sheets chưa có dữ liệu hoặc trùng với local', 'warning');
+  }
+}
+
+async function manualPushCloud() {
+  if (!isLead()) { toast('Chỉ Quản lý mới được đẩy dữ liệu cloud', 'error'); return; }
+  if (!hasSyncEnabled()) { toast('Chưa cấu hình URL Google Apps Script', 'error'); return; }
+  await pushToCloud(true);
+}
+
+function configureGasUrl() {
+  if (!isLead()) { toast('Chỉ Quản lý mới được cấu hình sync', 'error'); return; }
+  const current = getGasUrl();
+  const isHardcoded = HARDCODED_GAS_URL && HARDCODED_GAS_URL.startsWith('https://');
+  showModal('⚙️ Cấu hình Google Sheets Sync', `
+    ${isHardcoded
+      ? `<div style="background:#dcfce7;border-left:4px solid #16a34a;padding:10px 14px;border-radius:6px;font-size:13px;color:#14532d;margin-bottom:14px">
+           ✅ <strong>URL đã được nhúng sẵn trong file</strong> — tất cả máy tự đồng bộ khi mở file.
+         </div>`
+      : `<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:6px;font-size:13px;color:#78350f;margin-bottom:14px">
+           ⚠️ <strong>URL đang lưu tạm trong trình duyệt này.</strong><br>
+           Để máy khác tự đồng bộ, hãy mở file HTML bằng Notepad/VSCode, tìm dòng <code>HARDCODED_GAS_URL</code> và dán URL vào đó, rồi lưu file lại.
+         </div>`
+    }
+    <div class="form-group">
+      <label class="form-label required">Apps Script Web App URL</label>
+      <input type="url" class="form-input" id="gas-url-input" value="${escapeHtml(current)}"
+        placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" ${isHardcoded ? 'readonly' : ''} />
+      ${isHardcoded ? '<span class="text-xs text-muted">Để thay đổi, sửa trực tiếp trong file HTML tại dòng <code>HARDCODED_GAS_URL</code></span>'
+                    : '<span class="text-xs text-muted">Bắt đầu bằng https://script.google.com/macros/s/</span>'}
+    </div>
+  `, [
+    { label: 'Đóng', onclick: 'closeModal()' },
+    ...(isHardcoded ? [] : [{ label: '💾 Lưu tạm & Kiểm tra', class: 'btn-primary', onclick: 'saveGasUrlFromModal()' }])
+  ]);
+}
+
+async function saveGasUrlFromModal() {
+  const url = (document.getElementById('gas-url-input').value || '').trim();
+  if (url && !url.startsWith('https://script.google.com/macros/s/')) {
+    toast('URL không hợp lệ. Phải bắt đầu bằng https://script.google.com/macros/s/', 'error'); return;
+  }
+  setGasUrl(url);
+  closeModal();
+  if (url) {
+    toast('Đang kiểm tra kết nối…', 'info');
+    try {
+      const res = await fetch(url + '?action=ping');
+      const json = JSON.parse(await res.text());
+      if (json.status === 'ok') {
+        toast('✅ Kết nối thành công! Sync đã được bật.', 'success');
+        if (typeof render === 'function') render();
+      } else throw new Error(json.message);
+    } catch (e) {
+      toast('⚠️ Lưu URL nhưng kiểm tra thất bại: ' + e.message, 'warning', 6000);
+    }
+  } else {
+    toast('Đã tắt sync Google Sheets', 'warning');
+    if (typeof render === 'function') render();
+  }
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function uid(prefix = '') {
+  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '—';
+  return dt.toLocaleDateString('vi-VN');
+}
+function fmtMoney(n) {
+  if (n === null || n === undefined || n === '') return '—';
+  return Number(n).toLocaleString('vi-VN') + ' đ';
+}
+function daysBetween(d1, d2) {
+  const a = new Date(d1), b = new Date(d2);
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+function daysFromToday(d) {
+  if (!d) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(d); target.setHours(0,0,0,0);
+  return Math.round((target - today) / (1000 * 60 * 60 * 24));
+}
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function toast(msg, type = 'info', duration = 3000) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), duration);
+}
+
+/* ============================================================
+   WARNING / STATUS LOGIC
+   ============================================================ */
+// Returns: 'success' (done) | 'danger' (overdue) | 'warning' (close to deadline) | 'progress' (on track) | 'default' (not started)
+function computeWarningLevel(item) {
+  if (!item) return 'default';
+  if (item.status === 'Hoàn thành') return 'success';
+  if (item.status === 'Tạm dừng' || item.status === 'Hủy') return 'default';
+  if (!item.deadline) return 'default';
+
+  const days = daysFromToday(item.deadline);
+  if (days < 0) return 'danger';
+
+  // Compute total duration percent left
+  let pct = null;
+  if (item.startDate || item.contractDate) {
+    const start = new Date(item.startDate || item.contractDate);
+    const end = new Date(item.deadline);
+    const total = (end - start) / (1000*60*60*24);
+    if (total > 0) {
+      pct = (days / total) * 100;
+    }
+  }
+
+  const cfg = state.config;
+  let warn = false;
+  if (cfg.warningMode === 'days' || cfg.warningMode === 'either') {
+    if (days <= cfg.thresholdDays) warn = true;
+  }
+  if (cfg.warningMode === 'percent' || cfg.warningMode === 'either') {
+    if (pct !== null && pct <= cfg.thresholdPercent) warn = true;
+  }
+  return warn ? 'warning' : 'progress';
+}
+
+function badgeForLevel(level, customLabel) {
+  const labels = {
+    success: 'Hoàn thành',
+    danger: 'Quá hạn',
+    warning: 'Sắp hết hạn',
+    progress: 'Đúng tiến độ',
+    default: 'Chưa bắt đầu'
+  };
+  return `<span class="badge badge-${level}">${customLabel || labels[level]}</span>`;
+}
+
+function rowClassForLevel(level) {
+  if (level === 'danger') return 'row-danger';
+  if (level === 'warning') return 'row-warning';
+  if (level === 'success') return 'row-success';
+  return '';
+}
+
+function deadlineDisplay(deadline) {
+  if (!deadline) return '—';
+  const days = daysFromToday(deadline);
+  let suffix = '';
+  if (days === 0) suffix = ' (hôm nay)';
+  else if (days < 0) suffix = ` (trễ ${Math.abs(days)} ngày)`;
+  else if (days <= state.config.thresholdDays) suffix = ` (còn ${days} ngày)`;
+  else suffix = ` (còn ${days} ngày)`;
+  return fmtDate(deadline) + suffix;
+}
+
+/* ============================================================
+   PROJECT PROGRESS COMPUTATION
+   ============================================================ */
+function computeProjectProgress(project) {
+  if (!project.tasks || project.tasks.length === 0) return 0;
+  const total = project.tasks.length;
+  let weighted = 0;
+  project.tasks.forEach(t => {
+    if (t.status === 'Hoàn thành') weighted += 100;
+    else weighted += (t.progress || 0);
+  });
+  return Math.round(weighted / total);
+}
+
+function projectStatusComputed(project) {
+  if (project.status === 'Hoàn thành' || project.status === 'Hủy' || project.status === 'Tạm dừng') return project.status;
+  // If has overdue task → "Chậm tiến độ" implicit
+  const hasOverdue = (project.tasks || []).some(t => {
+    if (t.status === 'Hoàn thành') return false;
+    return t.deadline && daysFromToday(t.deadline) < 0;
+  });
+  if (hasOverdue) return 'Chậm tiến độ';
+  // If past project deadline & not done
+  if (project.designDeadline && daysFromToday(project.designDeadline) < 0) return 'Chậm tiến độ';
+  return project.status || 'Đang triển khai';
+}
+
+/* ============================================================
+   ROUTING / VIEWS
+   ============================================================ */
+let currentView = 'dashboard';
+let currentProjectId = null;
+
+function navigate(view, projectId = null) {
+  currentView = view;
+  currentProjectId = projectId;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  render();
+}
+
+function getDelayedAlertBanner() {
+  const delayed = state.projects.filter(p => projectStatusComputed(p) === 'Chậm tiến độ');
+  if (delayed.length === 0) return '';
+  const links = delayed.slice(0, 3).map(p =>
+    `<a href="#" onclick="event.preventDefault();navigate('project_detail','${p.id}')">${escapeHtml(p.name)}</a>`
+  ).join(' · ');
+  const more = delayed.length > 3 ? ` · <a href="#" onclick="event.preventDefault();navigate('projects')">+ ${delayed.length-3} khác</a>` : '';
+  return `<div class="global-alert">
+    🚨 <strong>CẢNH BÁO TOÀN NHÓM:</strong> Có <strong>${delayed.length}</strong> dự án đang CHẬM TIẾN ĐỘ – cần xử lý gấp! ${links}${more}
+  </div>`;
+}
+
+function render() {
+  // Block render if designer tries to access lead-only view
+  if (currentRole === 'designer' && currentView === 'config') {
+    currentView = 'dashboard';
+  }
+  const titleMap = {
+    dashboard: 'Dashboard',
+    my_tasks: 'Việc của tôi',
+    projects: 'Danh sách dự án',
+    project_detail: 'Chi tiết dự án',
+    employees: 'Nhân viên phòng Thiết kế',
+    reports: 'Báo cáo',
+    config: 'Cấu hình hệ thống'
+  };
+  document.getElementById('page-title').textContent = titleMap[currentView] || '';
+  const actions = document.getElementById('topbar-actions');
+  actions.innerHTML = '';
+  const content = document.getElementById('content');
+
+  // Render global delayed projects warning at top of every view
+  let topBanners = getDelayedAlertBanner();
+  // Add designer read-only banner
+  if (currentRole === 'designer') {
+    topBanners += `<div class="role-banner designer">🧑‍🎨 Bạn đang đăng nhập với vai trò <strong>Thành viên Thiết kế</strong> – chỉ có thể xem, không thay đổi được dữ liệu. Liên hệ Trưởng nhóm nếu cần chỉnh sửa.</div>`;
+  }
+  content.innerHTML = topBanners;
+
+  // Each render function appends to existing content (instead of replacing)
+  // We use a wrapper div so existing render functions (which set innerHTML directly) work
+  const wrapper = document.createElement('div');
+  content.appendChild(wrapper);
+
+  switch (currentView) {
+    case 'dashboard':       renderDashboard(wrapper, actions); break;
+    case 'my_tasks':        renderMyTasks(wrapper, actions); break;
+    case 'projects':        renderProjectList(wrapper, actions); break;
+    case 'project_detail':  renderProjectDetail(wrapper, actions, currentProjectId); break;
+    case 'employees':       renderEmployees(wrapper, actions); break;
+    case 'reports':         renderReports(wrapper, actions); break;
+    case 'config':          renderConfig(wrapper, actions); break;
+  }
+}
+
+/* ============================================================
+   DASHBOARD VIEW
+   ============================================================ */
+function renderMyTasks(content, actions) {
+  if (!currentUserEmpId) {
+    content.innerHTML += `<div class="card"><div class="empty-state">
+      <div class="empty-state-icon">⚠️</div>
+      <h3>Chưa liên kết với hồ sơ nhân viên</h3>
+      <p>Phiên đăng nhập hiện tại chưa được liên kết với danh sách nhân viên do Trưởng nhóm tạo.</p>
+      <p class="text-muted text-sm">Vui lòng đăng xuất và đăng nhập lại bằng cách <strong>chọn tên trong dropdown</strong>.</p>
+      <button class="btn btn-primary mt-2" onclick="logout()">🚪 Đăng xuất / Đăng nhập lại</button>
+    </div></div>`;
+    return;
+  }
+  const emp = state.employees.find(e => e.id === currentUserEmpId);
+  const myTasks = [];
+  state.projects.forEach(p => {
+    (p.tasks || []).forEach(t => {
+      if (t.assigneeId === currentUserEmpId) {
+        myTasks.push({ ...t, projectName: p.name, projectCode: p.code, projectId: p.id });
+      }
+    });
+  });
+  myTasks.sort((a, b) => {
+    if (a.status === 'Hoàn thành' && b.status !== 'Hoàn thành') return 1;
+    if (b.status === 'Hoàn thành' && a.status !== 'Hoàn thành') return -1;
+    if (!a.deadline) return 1; if (!b.deadline) return -1;
+    return new Date(a.deadline) - new Date(b.deadline);
+  });
+  const active = myTasks.filter(t => t.status !== 'Hoàn thành');
+  const completed = myTasks.filter(t => t.status === 'Hoàn thành');
+  const overdue = active.filter(t => t.deadline && daysFromToday(t.deadline) < 0);
+  const warning = active.filter(t => computeWarningLevel(t) === 'warning');
+
+  let html = `<div class="card" style="background:#f0f9ff;border-left:4px solid var(--primary)">
+    <h3 style="margin:0">👋 Xin chào, ${escapeHtml(emp ? emp.fullName : currentUserName)}!</h3>
+    <div class="text-muted text-sm">${emp ? escapeHtml(emp.role) : 'Thành viên Thiết kế'} – đây là các nhiệm vụ được giao cho bạn.</div>
+  </div>`;
+
+  html += `<div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">Đang đảm nhiệm</div><div class="stat-value">${active.length}</div></div>
+    <div class="stat-card warning"><div class="stat-label">Sắp hết hạn</div><div class="stat-value">${warning.length}</div></div>
+    <div class="stat-card danger"><div class="stat-label">Quá hạn</div><div class="stat-value">${overdue.length}</div></div>
+    <div class="stat-card success"><div class="stat-label">Đã hoàn thành</div><div class="stat-value">${completed.length}</div></div>
+  </div>`;
+
+  html += `<div class="card"><div class="card-header"><h3 class="card-title">📌 Nhiệm vụ đang đảm nhiệm</h3></div>`;
+  if (active.length === 0) {
+    html += `<div class="empty-state"><div class="empty-state-icon">✨</div><p>Bạn không có nhiệm vụ nào đang chờ. Tốt lắm!</p></div>`;
+  } else {
+    html += `<div class="legend mb-3">
+      <div class="legend-item"><div class="legend-dot" style="background:#fef9e7;border:1px solid #fcd34d"></div>Sắp hết hạn</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn – cập nhật ngay</div>
+    </div>
+    <div class="table-wrap"><table class="data-table"><thead><tr>
+      <th>Dự án</th><th>Nội dung TK</th><th>Bắt đầu</th><th>Hạn</th><th>Tiến độ</th><th>Trạng thái</th><th>Cập nhật</th>
+    </tr></thead><tbody>`;
+    active.forEach(t => {
+      const lvl = computeWarningLevel(t);
+      const stCls = t.status === 'Đang thực hiện' ? 'progress' : t.status === 'Đang chờ duyệt' ? 'info' : t.status === 'Tạm dừng' ? 'warning' : 'default';
+      html += `<tr class="${rowClassForLevel(lvl)}">
+        <td><strong>${escapeHtml(t.projectCode || '')}</strong><br><span class="text-xs text-muted">${escapeHtml(t.projectName)}</span></td>
+        <td><strong>${escapeHtml(t.name)}</strong>${t.notes ? '<div class="text-xs text-muted">'+escapeHtml(t.notes)+'</div>' : ''}</td>
+        <td>${fmtDate(t.startDate)}</td>
+        <td>${deadlineDisplay(t.deadline)}</td>
+        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${t.progress||0}%"></div></div>${t.progress||0}%</div></td>
+        <td><span class="badge badge-${stCls}">${t.status}</span></td>
+        <td><button class="btn btn-sm btn-primary" onclick="openMyTaskUpdate('${t.projectId}','${t.id}')">📝 Cập nhật</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+
+  if (completed.length > 0) {
+    html += `<div class="card"><div class="card-header"><h3 class="card-title">✅ Đã hoàn thành (${completed.length})</h3></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr>
+        <th>Dự án</th><th>Nội dung</th><th>Hạn</th><th>HT thực tế</th>
+      </tr></thead><tbody>`;
+    completed.slice(0, 20).forEach(t => {
+      html += `<tr class="row-success">
+        <td>${escapeHtml(t.projectCode || '')}</td>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${fmtDate(t.deadline)}</td>
+        <td>${fmtDate(t.completedDate)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+  content.innerHTML += html;
+}
+
+function renderDashboard(content, actions) {
+  const projects = state.projects;
+  const total = projects.length;
+  const inProgress = projects.filter(p => projectStatusComputed(p) === 'Đang triển khai').length;
+  const delayed = projects.filter(p => projectStatusComputed(p) === 'Chậm tiến độ').length;
+  const done = projects.filter(p => p.status === 'Hoàn thành').length;
+
+  const allTasks = projects.flatMap(p => (p.tasks||[]).map(t => ({...t, projectName: p.name, projectId: p.id})));
+  const totalTasks = allTasks.length;
+  const overdueTasks = allTasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0);
+  const warningTasks = allTasks.filter(t => {
+    if (t.status === 'Hoàn thành') return false;
+    return computeWarningLevel(t) === 'warning';
+  });
+
+  // Upcoming projects (deadline within 14 days)
+  const upcoming = projects
+    .filter(p => p.designDeadline && p.status !== 'Hoàn thành' && daysFromToday(p.designDeadline) >= 0 && daysFromToday(p.designDeadline) <= 14)
+    .sort((a,b) => new Date(a.designDeadline) - new Date(b.designDeadline));
+
+  const totalContractValue = projects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
+
+  let html = '';
+
+  if (total === 0) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-state-icon">🏗️</div>
+          <h3>Chưa có dự án nào</h3>
+          <p>Bắt đầu bằng cách thêm nhân viên và dự án đầu tiên.</p>
+          <button class="btn btn-primary mt-2" onclick="navigate('projects')">+ Tạo dự án mới</button>
+          <button class="btn mt-2 lead-only" onclick="loadSampleData()">🎲 Tạo dữ liệu mẫu</button>
+        </div>
+      </div>`;
+    content.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Tổng dự án</div>
+      <div class="stat-value">${total}</div>
+      <div class="stat-sub">Tổng GT HĐ: ${fmtMoney(totalContractValue)}</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Đang triển khai</div>
+      <div class="stat-value">${inProgress}</div>
+      <div class="stat-sub">${done} đã hoàn thành</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Chậm tiến độ</div>
+      <div class="stat-value">${delayed}</div>
+      <div class="stat-sub">${overdueTasks.length} nhiệm vụ trễ hạn</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Sắp hết hạn</div>
+      <div class="stat-value">${warningTasks.length}</div>
+      <div class="stat-sub">${totalTasks} tổng nhiệm vụ</div>
+    </div>
+  </div>`;
+
+  // Upcoming
+  html += `<div class="card">
+    <div class="card-header">
+      <h3 class="card-title">⏰ Dự án sắp đến hạn (14 ngày tới)</h3>
+      <button class="btn btn-sm" onclick="navigate('projects')">Xem tất cả →</button>
+    </div>`;
+  if (upcoming.length === 0) {
+    html += `<p class="text-muted">Không có dự án nào sắp đến hạn.</p>`;
+  } else {
+    html += `<div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>Mã DA</th><th>Tên dự án</th><th>Chủ đầu tư</th>
+        <th>Hạn hoàn thành TK</th><th>Tiến độ</th><th>Trạng thái</th><th></th>
+      </tr></thead><tbody>`;
+    upcoming.forEach(p => {
+      const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
+      const prog = computeProjectProgress(p);
+      html += `<tr class="${rowClassForLevel(lvl)}">
+        <td><strong>${escapeHtml(p.code || p.id)}</strong></td>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.investor || '—')}</td>
+        <td>${deadlineDisplay(p.designDeadline)}</td>
+        <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
+        <td>${badgeForLevel(lvl)}</td>
+        <td><button class="btn btn-sm" onclick="navigate('project_detail','${p.id}')">Mở</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+
+  // Overdue tasks
+  if (overdueTasks.length > 0) {
+    html += `<div class="card">
+      <div class="card-header">
+        <h3 class="card-title" style="color:var(--danger)">🚨 Nhiệm vụ trễ hạn</h3>
+      </div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr>
+          <th>Dự án</th><th>Nội dung TK</th><th>Người thực hiện</th>
+          <th>Hạn</th><th>Trễ</th><th>Tiến độ</th><th></th>
+        </tr></thead><tbody>`;
+    overdueTasks.slice(0, 10).forEach(t => {
+      const emp = state.employees.find(e => e.id === t.assigneeId);
+      const days = Math.abs(daysFromToday(t.deadline));
+      html += `<tr class="row-danger">
+        <td>${escapeHtml(t.projectName)}</td>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${emp ? escapeHtml(emp.fullName) : '—'}</td>
+        <td>${fmtDate(t.deadline)}</td>
+        <td><strong style="color:var(--danger)">${days} ngày</strong></td>
+        <td>${t.progress || 0}%</td>
+        <td><button class="btn btn-sm" onclick="navigate('project_detail','${t.projectId}')">Mở</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+
+  // Workload by employee
+  if (state.employees.length > 0) {
+    html += `<div class="card">
+      <div class="card-header"><h3 class="card-title">👥 Khối lượng theo nhân viên</h3></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr>
+          <th>Nhân viên</th><th>Chức danh</th>
+          <th class="center">Tổng nhiệm vụ</th><th class="center">Đang làm</th>
+          <th class="center">Hoàn thành</th><th class="center">Trễ hạn</th>
+        </tr></thead><tbody>`;
+    state.employees.filter(e => e.status === 'Đang làm').forEach(emp => {
+      const tasks = allTasks.filter(t => t.assigneeId === emp.id);
+      const doneCnt = tasks.filter(t => t.status === 'Hoàn thành').length;
+      const inProgCnt = tasks.filter(t => t.status === 'Đang thực hiện').length;
+      const overdueCnt = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+      html += `<tr>
+        <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+        <td>${escapeHtml(emp.role)}</td>
+        <td class="center">${tasks.length}</td>
+        <td class="center"><span class="badge badge-info">${inProgCnt}</span></td>
+        <td class="center"><span class="badge badge-success">${doneCnt}</span></td>
+        <td class="center">${overdueCnt > 0 ? '<span class="badge badge-danger">'+overdueCnt+'</span>' : '0'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+
+  content.innerHTML = html;
+}
+
+/* ============================================================
+   PROJECT LIST
+   ============================================================ */
+let projectFilter = { search: '', status: '' };
+
+function renderProjectList(content, actions) {
+  actions.innerHTML = `<button class="btn btn-primary lead-only" onclick="openProjectForm()">+ Thêm dự án</button>`;
+
+  let html = `<div class="toolbar">
+    <div class="search-bar">
+      <input type="text" id="proj-search" placeholder="Tìm theo tên, CĐT, mã..." value="${escapeHtml(projectFilter.search)}" oninput="onProjFilter()" />
+    </div>
+    <select class="form-select" id="proj-status" onchange="onProjFilter()">
+      <option value="">Tất cả trạng thái</option>
+      ${PROJECT_STATUS.concat(['Chậm tiến độ']).map(s => `<option value="${s}" ${s===projectFilter.status?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <div class="toolbar-spacer"></div>
+    <span class="text-sm text-muted">Tổng: ${state.projects.length} dự án</span>
+  </div>`;
+
+  let list = state.projects.slice();
+  if (projectFilter.search) {
+    const q = projectFilter.search.toLowerCase();
+    list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.investor||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.location||'').toLowerCase().includes(q));
+  }
+  if (projectFilter.status) {
+    list = list.filter(p => projectStatusComputed(p) === projectFilter.status);
+  }
+
+  if (list.length === 0) {
+    html += `<div class="card"><div class="empty-state">
+      <div class="empty-state-icon">🏗️</div>
+      <p>${state.projects.length === 0 ? 'Chưa có dự án nào.' : 'Không tìm thấy dự án phù hợp.'}</p>
+      ${state.projects.length === 0 ? '<button class="btn btn-primary mt-2 lead-only" onclick="openProjectForm()">+ Tạo dự án mới</button>' : ''}
+    </div></div>`;
+    content.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="table-wrap"><table class="data-table">
+    <thead><tr>
+      <th>Mã DA</th><th>Tên dự án</th><th>Chủ đầu tư</th><th>Địa điểm</th>
+      <th>GT HĐ</th><th>Hạn hoàn thành TK</th><th>Hạn ND105</th>
+      <th>Tiến độ</th><th>Trạng thái</th><th>Thao tác</th>
+    </tr></thead><tbody>`;
+  list.forEach(p => {
+    const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
+    const prog = computeProjectProgress(p);
+    const computedStatus = projectStatusComputed(p);
+    const statusBadgeClass = computedStatus === 'Hoàn thành' ? 'success'
+      : computedStatus === 'Chậm tiến độ' ? 'danger'
+      : computedStatus === 'Tạm dừng' ? 'warning'
+      : computedStatus === 'Hủy' ? 'default'
+      : 'info';
+    html += `<tr class="${rowClassForLevel(lvl)}">
+      <td><strong>${escapeHtml(p.code || '')}</strong></td>
+      <td><a href="#" onclick="event.preventDefault(); navigate('project_detail','${p.id}')" style="color:var(--primary); text-decoration:none; font-weight:600">${escapeHtml(p.name)}</a></td>
+      <td>${escapeHtml(p.investor || '—')}</td>
+      <td>${escapeHtml(p.location || '—')}</td>
+      <td class="num">${fmtMoney(p.contractValue)}</td>
+      <td>${deadlineDisplay(p.designDeadline)}</td>
+      <td>${deadlineDisplay(p.pccc105Deadline)}</td>
+      <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
+      <td><span class="badge badge-${statusBadgeClass}">${computedStatus}</span></td>
+      <td>
+        <button class="btn btn-sm" onclick="navigate('project_detail','${p.id}')">Mở</button>
+        <button class="btn btn-sm lead-only" onclick="openProjectForm('${p.id}')">Sửa</button>
+        <button class="btn btn-sm btn-danger lead-only" onclick="deleteProject('${p.id}')">Xóa</button>
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  html += `<div class="legend mt-4">
+    <div class="legend-item"><div class="legend-dot" style="background:#fef9e7;border:1px solid #fcd34d"></div>Sắp hết hạn (cảnh báo)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn / chậm tiến độ</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border:1px solid #86efac"></div>Đã hoàn thành</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1px solid var(--gray-300)"></div>Đúng tiến độ</div>
+  </div>`;
+
+  content.innerHTML = html;
+}
+function onProjFilter() {
+  projectFilter.search = document.getElementById('proj-search').value;
+  projectFilter.status = document.getElementById('proj-status').value;
+  renderProjectList(document.getElementById('content'), document.getElementById('topbar-actions'));
+}
+
+function openProjectForm(id) {
+  if (!isLead()) { toast('Bạn không có quyền thực hiện thao tác này', 'error'); return; }
+  const isEdit = !!id;
+  const p = isEdit ? state.projects.find(x => x.id === id) : {
+    id: uid('p_'),
+    code: 'DA' + (state.projects.length + 1).toString().padStart(3, '0'),
+    name: '',
+    investor: '',
+    investorContactName: '',
+    investorContactPhone: '',
+    location: '',
+    architectCompany: '',
+    architectManagerName: '',
+    architectManagerPhone: '',
+    contractNo: '',
+    contractValue: '',
+    paidAmount: '',
+    contractDate: '',
+    designStart: '',
+    designDeadline: '',
+    pccc105FileCode: '',
+    pccc105SubmitDate: '',
+    pccc105Deadline: '',
+    pc07OfficerName: '',
+    pc07OfficerPhone: '',
+    appraisalFee: '',
+    appraisalFeeDate: '',
+    status: 'Đang triển khai',
+    notes: '',
+    tasks: []
+  };
+
+  const body = `
+    <div class="form-section-title">📋 1. Thông tin cơ bản</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label required">Mã dự án</label>
+        <input class="form-input" id="f-code" value="${escapeHtml(p.code||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="f-status">
+          ${PROJECT_STATUS.map(s => `<option value="${s}" ${s===p.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label required">Tên dự án</label>
+        <input class="form-input" id="f-name" value="${escapeHtml(p.name||'')}" placeholder="VD: Hệ thống PCCC Chung cư ABC" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Địa điểm xây dựng</label>
+        <input class="form-input" id="f-location" value="${escapeHtml(p.location||'')}" />
+      </div>
+    </div>
+
+    <div class="form-section-title">🏢 2. Chủ đầu tư & người liên hệ</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Tên chủ đầu tư</label>
+        <input class="form-input" id="f-investor" value="${escapeHtml(p.investor||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Người liên hệ CĐT (tên)</label>
+        <input class="form-input" id="f-investorContactName" value="${escapeHtml(p.investorContactName||'')}" placeholder="VD: Nguyễn Văn A" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">SĐT người liên hệ CĐT</label>
+        <input type="tel" class="form-input" id="f-investorContactPhone" value="${escapeHtml(p.investorContactPhone||'')}" placeholder="0901234567" />
+      </div>
+    </div>
+
+    <div class="form-section-title">🏗️ 3. Công ty thiết kế kiến trúc</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Tên công ty thiết kế kiến trúc</label>
+        <input class="form-input" id="f-architectCompany" value="${escapeHtml(p.architectCompany||'')}" placeholder="VD: Công ty CP Kiến trúc XYZ" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Người quản lý thiết kế</label>
+        <input class="form-input" id="f-architectManagerName" value="${escapeHtml(p.architectManagerName||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">SĐT liên hệ</label>
+        <input type="tel" class="form-input" id="f-architectManagerPhone" value="${escapeHtml(p.architectManagerPhone||'')}" />
+      </div>
+    </div>
+
+    <div class="form-section-title">📑 4. Hợp đồng & thanh toán</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Số hợp đồng thiết kế</label>
+        <input class="form-input" id="f-contractNo" value="${escapeHtml(p.contractNo||'')}" placeholder="VD: HĐ-TK-2025/001" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày ký hợp đồng</label>
+        <input type="date" class="form-input" id="f-contractDate" value="${p.contractDate||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giá trị hợp đồng (đ)</label>
+        <input type="number" class="form-input" id="f-contractValue" value="${p.contractValue||''}" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Đã thanh toán đến nay (đ)</label>
+        <input type="number" class="form-input" id="f-paidAmount" value="${p.paidAmount||''}" placeholder="0" />
+      </div>
+    </div>
+
+    <div class="form-section-title">📅 5. Tiến độ thiết kế</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Ngày bắt đầu thiết kế</label>
+        <input type="date" class="form-input" id="f-designStart" value="${p.designStart||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Hạn hoàn thành thiết kế</label>
+        <input type="date" class="form-input" id="f-designDeadline" value="${p.designDeadline||''}" />
+      </div>
+    </div>
+
+    <div class="form-section-title">🚒 6. Thẩm duyệt PCCC (NĐ 105/2025)</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Mã hồ sơ thẩm định PCCC</label>
+        <input class="form-input" id="f-pccc105FileCode" value="${escapeHtml(p.pccc105FileCode||'')}" placeholder="VD: G01.801.307-260130-00017" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày nộp hồ sơ thẩm duyệt</label>
+        <input type="date" class="form-input" id="f-pccc105SubmitDate" value="${p.pccc105SubmitDate||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hạn hoàn thành thẩm duyệt</label>
+        <input type="date" class="form-input" id="f-pccc105Deadline" value="${p.pccc105Deadline||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cán bộ PC07 phụ trách (tên)</label>
+        <input class="form-input" id="f-pc07OfficerName" value="${escapeHtml(p.pc07OfficerName||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">SĐT cán bộ PC07</label>
+        <input type="tel" class="form-input" id="f-pc07OfficerPhone" value="${escapeHtml(p.pc07OfficerPhone||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phí thẩm định đã nộp (đ)</label>
+        <input type="number" class="form-input" id="f-appraisalFee" value="${p.appraisalFee||''}" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày nộp phí thẩm định</label>
+        <input type="date" class="form-input" id="f-appraisalFeeDate" value="${p.appraisalFeeDate||''}" />
+      </div>
+    </div>
+
+    <div class="form-section-title">📝 7. Ghi chú</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <textarea class="form-textarea" id="f-notes" placeholder="Ghi chú chung về dự án...">${escapeHtml(p.notes||'')}</textarea>
+      </div>
+    </div>
+    <div class="text-xs text-muted mt-2">📌 Theo Nghị định 105/2025/NĐ-CP, thời hạn thẩm duyệt PCCC thường 5–15 ngày làm việc tùy quy mô.</div>
+  `;
+  showModal(isEdit ? 'Sửa dự án' : 'Thêm dự án mới', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: isEdit ? 'Cập nhật' : 'Tạo dự án', class: 'btn-primary', onclick: `submitProjectForm(${isEdit ? `'${id}'` : 'null'})` }
+  ]);
+}
+
+function submitProjectForm(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const data = {
+    code: document.getElementById('f-code').value.trim(),
+    name: document.getElementById('f-name').value.trim(),
+    investor: document.getElementById('f-investor').value.trim(),
+    investorContactName: document.getElementById('f-investorContactName').value.trim(),
+    investorContactPhone: document.getElementById('f-investorContactPhone').value.trim(),
+    location: document.getElementById('f-location').value.trim(),
+    architectCompany: document.getElementById('f-architectCompany').value.trim(),
+    architectManagerName: document.getElementById('f-architectManagerName').value.trim(),
+    architectManagerPhone: document.getElementById('f-architectManagerPhone').value.trim(),
+    contractNo: document.getElementById('f-contractNo').value.trim(),
+    contractValue: document.getElementById('f-contractValue').value,
+    paidAmount: document.getElementById('f-paidAmount').value,
+    contractDate: document.getElementById('f-contractDate').value,
+    designStart: document.getElementById('f-designStart').value,
+    designDeadline: document.getElementById('f-designDeadline').value,
+    pccc105FileCode: document.getElementById('f-pccc105FileCode').value.trim(),
+    pccc105SubmitDate: document.getElementById('f-pccc105SubmitDate').value,
+    pccc105Deadline: document.getElementById('f-pccc105Deadline').value,
+    pc07OfficerName: document.getElementById('f-pc07OfficerName').value.trim(),
+    pc07OfficerPhone: document.getElementById('f-pc07OfficerPhone').value.trim(),
+    appraisalFee: document.getElementById('f-appraisalFee').value,
+    appraisalFeeDate: document.getElementById('f-appraisalFeeDate').value,
+    status: document.getElementById('f-status').value,
+    notes: document.getElementById('f-notes').value.trim()
+  };
+  if (!data.name) return toast('Vui lòng nhập tên dự án', 'error');
+  if (!data.code) return toast('Vui lòng nhập mã dự án', 'error');
+  if (!data.designDeadline) return toast('Vui lòng nhập hạn hoàn thành thiết kế', 'error');
+
+  if (id) {
+    const p = state.projects.find(x => x.id === id);
+    Object.assign(p, data);
+    toast('Cập nhật dự án thành công', 'success');
+  } else {
+    state.projects.push({ id: uid('p_'), tasks: [], ...data });
+    toast('Thêm dự án thành công', 'success');
+  }
+  saveState();
+  closeModal();
+  render();
+}
+
+function deleteProject(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  showConfirm(`Xóa dự án <strong>${escapeHtml(p.name)}</strong>? Toàn bộ ${(p.tasks||[]).length} nhiệm vụ liên quan cũng sẽ bị xóa.`, () => {
+    state.projects = state.projects.filter(x => x.id !== id);
+    saveState();
+    render();
+    toast('Đã xóa dự án', 'success');
+  });
+}
+
+/* ============================================================
+   PROJECT DETAIL VIEW
+   ============================================================ */
+function renderProjectDetail(content, actions, projectId) {
+  const p = state.projects.find(x => x.id === projectId);
+  if (!p) {
+    content.innerHTML = `<div class="card"><p>Không tìm thấy dự án.</p><button class="btn" onclick="navigate('projects')">← Quay lại</button></div>`;
+    return;
+  }
+  document.getElementById('page-title').textContent = `Dự án: ${p.name}`;
+
+  actions.innerHTML = `
+    <button class="btn" onclick="navigate('projects')">← Danh sách</button>
+    <button class="btn lead-only" onclick="openProjectForm('${p.id}')">✏️ Sửa thông tin</button>
+    <button class="btn btn-primary lead-only" onclick="openTaskForm('${p.id}')">+ Thêm nhiệm vụ</button>
+  `;
+
+  const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
+  const prog = computeProjectProgress(p);
+  const compStatus = projectStatusComputed(p);
+  const statusBadgeClass = compStatus === 'Hoàn thành' ? 'success'
+    : compStatus === 'Chậm tiến độ' ? 'danger'
+    : compStatus === 'Tạm dừng' ? 'warning' : 'info';
+
+  let html = `
+    <div class="card">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-xs text-muted">Mã DA: ${escapeHtml(p.code||'—')} · ${escapeHtml(p.contractNo||'—')}</div>
+          <h2 style="margin:4px 0">${escapeHtml(p.name)}</h2>
+          <div><span class="badge badge-${statusBadgeClass}">${compStatus}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div class="text-xs text-muted">Tiến độ tổng thể</div>
+          <div style="font-size:32px;font-weight:700;color:var(--primary)">${prog}%</div>
+          <div class="progress" style="width:200px"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div>
+        </div>
+      </div>
+      <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">🏢 Chủ đầu tư & địa điểm</h4>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Chủ đầu tư</span><span class="info-value">${escapeHtml(p.investor||'—')}</span></div>
+        <div class="info-item"><span class="info-label">Người liên hệ CĐT</span><span class="info-value">${escapeHtml(p.investorContactName||'—')}${p.investorContactPhone?' · 📞 '+escapeHtml(p.investorContactPhone):''}</span></div>
+        <div class="info-item"><span class="info-label">Địa điểm xây dựng</span><span class="info-value">${escapeHtml(p.location||'—')}</span></div>
+      </div>
+
+      <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">🏗️ Công ty thiết kế kiến trúc</h4>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Tên công ty</span><span class="info-value">${escapeHtml(p.architectCompany||'—')}</span></div>
+        <div class="info-item"><span class="info-label">Quản lý thiết kế</span><span class="info-value">${escapeHtml(p.architectManagerName||'—')}${p.architectManagerPhone?' · 📞 '+escapeHtml(p.architectManagerPhone):''}</span></div>
+      </div>
+
+      <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">📑 Hợp đồng & thanh toán</h4>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Số HĐ</span><span class="info-value">${escapeHtml(p.contractNo||'—')}</span></div>
+        <div class="info-item"><span class="info-label">Ngày ký HĐ</span><span class="info-value">${fmtDate(p.contractDate)}</span></div>
+        <div class="info-item"><span class="info-label">Giá trị HĐ</span><span class="info-value large">${fmtMoney(p.contractValue)}</span></div>
+        <div class="info-item"><span class="info-label">Đã thanh toán</span><span class="info-value">${fmtMoney(p.paidAmount)}${(p.contractValue && p.paidAmount)?'<div class="payment-bar"><div class="payment-progress"><div class="payment-progress-bar" style="width:'+Math.min(100,Math.round((Number(p.paidAmount)/Number(p.contractValue))*100))+'%"></div></div><span class="text-xs">'+Math.round((Number(p.paidAmount)/Number(p.contractValue))*100)+'%</span></div>':''}</span></div>
+      </div>
+
+      <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">📅 Tiến độ thiết kế</h4>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Bắt đầu thiết kế</span><span class="info-value">${fmtDate(p.designStart)}</span></div>
+        <div class="info-item" style="border-color:${lvl==='danger'?'var(--danger)':lvl==='warning'?'var(--warning)':'var(--gray-200)'};${lvl==='danger'||lvl==='warning'?'background:'+(lvl==='danger'?'#fef2f2':'#fef9e7')+';':''}"><span class="info-label">Hạn hoàn thành TK</span><span class="info-value">${deadlineDisplay(p.designDeadline)}</span></div>
+      </div>
+
+      <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">🚒 Thẩm duyệt PCCC (NĐ 105)</h4>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">Mã hồ sơ thẩm định</span><span class="info-value" style="font-family:monospace;font-size:12px">${escapeHtml(p.pccc105FileCode||'—')}</span></div>
+        <div class="info-item"><span class="info-label">Ngày nộp hồ sơ</span><span class="info-value">${fmtDate(p.pccc105SubmitDate)}</span></div>
+        <div class="info-item"><span class="info-label">Hạn thẩm duyệt</span><span class="info-value">${deadlineDisplay(p.pccc105Deadline)}</span></div>
+        <div class="info-item"><span class="info-label">Cán bộ PC07</span><span class="info-value">${escapeHtml(p.pc07OfficerName||'—')}${p.pc07OfficerPhone?' · 📞 '+escapeHtml(p.pc07OfficerPhone):''}</span></div>
+        <div class="info-item"><span class="info-label">Phí thẩm định</span><span class="info-value">${fmtMoney(p.appraisalFee)}${p.appraisalFeeDate?' · '+fmtDate(p.appraisalFeeDate):''}</span></div>
+      </div>
+      ${p.notes ? `<div class="mt-4"><div class="info-label">Ghi chú</div><div style="margin-top:6px;padding:10px;background:var(--gray-50);border-radius:6px;white-space:pre-wrap">${escapeHtml(p.notes)}</div></div>` : ''}
+    </div>
+  `;
+
+  // Tasks
+  const tasks = p.tasks || [];
+  const sortedTasks = tasks.slice().sort((a,b) => {
+    if (!a.deadline) return 1;
+    if (!b.deadline) return -1;
+    return new Date(a.deadline) - new Date(b.deadline);
+  });
+
+  html += `<div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📋 Nhiệm vụ thiết kế (${tasks.length})</h3>
+      <button class="btn btn-primary btn-sm lead-only" onclick="openTaskForm('${p.id}')">+ Thêm nhiệm vụ</button>
+    </div>`;
+
+  if (tasks.length === 0) {
+    html += `<div class="empty-state">
+      <div class="empty-state-icon">📝</div>
+      <p>Chưa có nhiệm vụ thiết kế nào.</p>
+      <button class="btn btn-primary mt-2 lead-only" onclick="openTaskForm('${p.id}')">+ Thêm nhiệm vụ đầu tiên</button>
+      <button class="btn mt-2 lead-only" onclick="loadDefaultTasks('${p.id}')">📋 Dùng template hạng mục PCCC chuẩn</button>
+    </div>`;
+  } else {
+    html += `<div class="legend mb-3">
+      <div class="legend-item"><div class="legend-dot" style="background:#fef9e7;border:1px solid #fcd34d"></div>Sắp hết hạn</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border:1px solid #86efac"></div>Hoàn thành</div>
+    </div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th style="width:40px">STT</th><th>Nội dung thiết kế</th><th>Người thực hiện</th>
+        <th>Bắt đầu</th><th>Hạn</th><th>Tiến độ</th><th>Trạng thái</th><th>Cảnh báo</th><th></th>
+      </tr></thead><tbody>`;
+    sortedTasks.forEach((t, idx) => {
+      const lvl = computeWarningLevel(t);
+      const emp = state.employees.find(e => e.id === t.assigneeId);
+      const taskStatusClass = t.status === 'Hoàn thành' ? 'success'
+        : t.status === 'Đang thực hiện' ? 'progress'
+        : t.status === 'Đang chờ duyệt' ? 'info'
+        : t.status === 'Tạm dừng' ? 'warning'
+        : 'default';
+      html += `<tr class="${rowClassForLevel(lvl)}">
+        <td class="center">${idx+1}</td>
+        <td><strong>${escapeHtml(t.name)}</strong>${t.notes ? '<div class="text-xs text-muted">'+escapeHtml(t.notes)+'</div>' : ''}</td>
+        <td>${emp ? escapeHtml(emp.fullName) : '<span class="text-muted">Chưa giao</span>'}</td>
+        <td>${fmtDate(t.startDate)}</td>
+        <td>${deadlineDisplay(t.deadline)}</td>
+        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${t.progress||0}%"></div></div><span class="text-sm">${t.progress||0}%</span></div></td>
+        <td><span class="badge badge-${taskStatusClass}">${t.status}</span></td>
+        <td>${badgeForLevel(lvl)}</td>
+        <td>
+          ${canUpdateTask(t) && !isLead() ? `<button class="btn btn-sm btn-primary" onclick="openMyTaskUpdate('${p.id}','${t.id}')">📝 Cập nhật</button>` : ''}
+          <button class="btn btn-sm lead-only" onclick="openTaskForm('${p.id}','${t.id}')">Sửa</button>
+          <button class="btn btn-sm btn-danger lead-only" onclick="deleteTask('${p.id}','${t.id}')">×</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+
+  content.innerHTML = html;
+}
+
+/* ============================================================
+   TASK FORM
+   ============================================================ */
+function openTaskForm(projectId, taskId) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const isEdit = !!taskId;
+  const t = isEdit ? project.tasks.find(x => x.id === taskId) : {
+    id: uid('t_'),
+    name: '',
+    description: '',
+    assigneeId: '',
+    startDate: '',
+    deadline: '',
+    completedDate: '',
+    progress: 0,
+    status: 'Chưa bắt đầu',
+    notes: ''
+  };
+  const body = `
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label required">Nội dung thiết kế (hạng mục)</label>
+        <input class="form-input" id="t-name" value="${escapeHtml(t.name)}" placeholder="VD: Bản vẽ mặt bằng hệ Sprinkler tầng 1-5" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Người thực hiện</label>
+        <select class="form-select" id="t-assigneeId">
+          <option value="">— Chọn nhân viên —</option>
+          ${state.employees.filter(e => e.status === 'Đang làm').map(e => `<option value="${e.id}" ${e.id===t.assigneeId?'selected':''}>${escapeHtml(e.fullName)} (${escapeHtml(e.role)})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="t-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('t-progress').value=100;document.getElementById('t-completedDate').value=new Date().toISOString().slice(0,10);}">
+          ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày bắt đầu</label>
+        <input type="date" class="form-input" id="t-startDate" value="${t.startDate||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Hạn hoàn thành</label>
+        <input type="date" class="form-input" id="t-deadline" value="${t.deadline||''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiến độ %</label>
+        <input type="number" min="0" max="100" class="form-input" id="t-progress" value="${t.progress||0}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày hoàn thành thực tế</label>
+        <input type="date" class="form-input" id="t-completedDate" value="${t.completedDate||''}" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Ghi chú</label>
+        <textarea class="form-textarea" id="t-notes">${escapeHtml(t.notes||'')}</textarea>
+      </div>
+    </div>
+  `;
+  showModal(isEdit ? 'Sửa nhiệm vụ' : 'Thêm nhiệm vụ thiết kế', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitTaskForm('${projectId}', ${isEdit ? `'${taskId}'` : 'null'})` }
+  ]);
+}
+
+function submitTaskForm(projectId, taskId) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const project = state.projects.find(x => x.id === projectId);
+  const data = {
+    name: document.getElementById('t-name').value.trim(),
+    assigneeId: document.getElementById('t-assigneeId').value,
+    startDate: document.getElementById('t-startDate').value,
+    deadline: document.getElementById('t-deadline').value,
+    progress: parseInt(document.getElementById('t-progress').value) || 0,
+    completedDate: document.getElementById('t-completedDate').value,
+    status: document.getElementById('t-status').value,
+    notes: document.getElementById('t-notes').value.trim()
+  };
+  if (!data.name) return toast('Vui lòng nhập nội dung thiết kế', 'error');
+  if (!data.deadline) return toast('Vui lòng nhập hạn hoàn thành', 'error');
+  if (data.progress < 0 || data.progress > 100) return toast('Tiến độ phải từ 0 đến 100', 'error');
+
+  if (taskId) {
+    const t = project.tasks.find(x => x.id === taskId);
+    Object.assign(t, data);
+    toast('Cập nhật nhiệm vụ thành công', 'success');
+  } else {
+    project.tasks = project.tasks || [];
+    project.tasks.push({ id: uid('t_'), ...data });
+    toast('Thêm nhiệm vụ thành công', 'success');
+  }
+  saveState();
+  closeModal();
+  render();
+}
+
+function deleteTask(projectId, taskId) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const t = project.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  showConfirm(`Xóa nhiệm vụ <strong>${escapeHtml(t.name)}</strong>?`, () => {
+    project.tasks = project.tasks.filter(x => x.id !== taskId);
+    saveState();
+    render();
+    toast('Đã xóa nhiệm vụ', 'success');
+  });
+}
+
+function loadDefaultTasks(projectId) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const defaults = [
+    'Khảo sát hiện trạng & đánh giá rủi ro cháy',
+    'Thuyết minh giải pháp PCCC tổng thể',
+    'Bản vẽ mặt bằng hệ thống chữa cháy Sprinkler',
+    'Bản vẽ mặt bằng hệ thống họng nước vách tường',
+    'Tính toán thủy lực hệ Sprinkler',
+    'Bản vẽ hệ thống báo cháy tự động',
+    'Bản vẽ hệ thống chữa cháy khí (FM200/CO2)',
+    'Bản vẽ hệ thống tăng áp – hút khói',
+    'Bản vẽ hệ thống cấp nước chữa cháy ngoài nhà',
+    'Bản vẽ chi tiết phòng bơm chữa cháy',
+    'Bản vẽ thoát nạn, biển báo, đèn chỉ dẫn',
+    'Bản vẽ hệ thống điện PCCC, máy phát dự phòng',
+    'Lập dự toán chi phí thiết bị PCCC',
+    'Lập danh mục thiết bị – thông số kỹ thuật',
+    'Hồ sơ thẩm duyệt PCCC nộp Cảnh sát',
+    'Chỉnh sửa hồ sơ theo ý kiến thẩm duyệt'
+  ];
+  const today = new Date();
+  const deadline = project.designDeadline ? new Date(project.designDeadline) : new Date(today.getTime() + 60*86400000);
+  const start = project.designStart ? new Date(project.designStart) : today;
+  const dayStep = Math.max(1, Math.floor((deadline - start) / (1000*60*60*24) / defaults.length));
+  defaults.forEach((name, i) => {
+    const startDate = new Date(start.getTime() + i*dayStep*86400000);
+    const taskDeadline = new Date(start.getTime() + (i+1)*dayStep*86400000);
+    project.tasks.push({
+      id: uid('t_'),
+      name: name,
+      assigneeId: '',
+      startDate: startDate.toISOString().slice(0,10),
+      deadline: taskDeadline.toISOString().slice(0,10),
+      progress: 0,
+      completedDate: '',
+      status: 'Chưa bắt đầu',
+      notes: ''
+    });
+  });
+  saveState();
+  render();
+  toast(`Đã thêm ${defaults.length} nhiệm vụ chuẩn`, 'success');
+}
+
+/* ============================================================
+   EMPLOYEES VIEW
+   ============================================================ */
+function renderEmployees(content, actions) {
+  actions.innerHTML = `<button class="btn btn-primary lead-only" onclick="openEmployeeForm()">+ Thêm nhân viên</button>`;
+
+  const list = state.employees;
+  let html = `<div class="card">
+    <div class="card-header"><h3 class="card-title">Phòng Thiết kế</h3>
+    <span class="text-sm text-muted">Tổng: ${list.length} người · ${list.filter(e=>e.status==='Đang làm').length} đang làm</span>
+    </div>`;
+
+  if (list.length === 0) {
+    html += `<div class="empty-state">
+      <div class="empty-state-icon">👥</div>
+      <p>Chưa có nhân viên nào.</p>
+      <button class="btn btn-primary mt-2 lead-only" onclick="openEmployeeForm()">+ Thêm nhân viên</button>
+    </div>`;
+  } else {
+    html += `<div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>Mã NV</th><th>Họ và Tên</th><th>Chức danh</th><th>Email</th><th>Điện thoại</th>
+        <th class="center">Khối lượng</th><th>Trạng thái</th><th></th>
+      </tr></thead><tbody>`;
+    list.forEach(e => {
+      const tasks = state.projects.flatMap(p => (p.tasks||[]).filter(t => t.assigneeId === e.id));
+      const active = tasks.filter(t => t.status !== 'Hoàn thành').length;
+      const overdue = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+      const stClass = e.status === 'Đang làm' ? 'success' : e.status === 'Nghỉ phép' ? 'warning' : 'default';
+      html += `<tr>
+        <td><strong>${escapeHtml(e.code||'')}</strong></td>
+        <td>${escapeHtml(e.fullName)}</td>
+        <td>${escapeHtml(e.role)}</td>
+        <td>${escapeHtml(e.email||'—')}</td>
+        <td>${escapeHtml(e.phone||'—')}</td>
+        <td class="center">
+          <span class="badge badge-info">${active} đang làm</span>
+          ${overdue ? '<br><span class="badge badge-danger">'+overdue+' trễ</span>' : ''}
+        </td>
+        <td><span class="badge badge-${stClass}">${escapeHtml(e.status)}</span>${e.passwordHash ? '' : '<br><span class="badge badge-warning" title="Chưa đặt MK đăng nhập">⚠ Chưa có MK</span>'}</td>
+        <td>
+          <button class="btn btn-sm lead-only" onclick="openEmployeeForm('${e.id}')">Sửa</button>
+          <button class="btn btn-sm lead-only" onclick="resetEmployeePassword('${e.id}')" title="Đặt/reset mật khẩu">🔑 MK</button>
+          <button class="btn btn-sm btn-danger lead-only" onclick="deleteEmployee('${e.id}')">Xóa</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+  content.innerHTML = html;
+}
+
+function openEmployeeForm(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const isEdit = !!id;
+  const e = isEdit ? state.employees.find(x => x.id === id) : {
+    id: uid('e_'),
+    code: 'NV' + (state.employees.length + 1).toString().padStart(3, '0'),
+    fullName: '', role: 'Kỹ sư Thiết kế', email: '', phone: '', status: 'Đang làm', notes: '',
+    passwordHash: ''
+  };
+  const body = `<div class="form-grid">
+    <div class="form-group">
+      <label class="form-label required">Mã NV</label>
+      <input class="form-input" id="e-code" value="${escapeHtml(e.code)}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Trạng thái</label>
+      <select class="form-select" id="e-status">
+        ${NV_STATUS.map(s=>`<option value="${s}" ${s===e.status?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group full">
+      <label class="form-label required">Họ và Tên</label>
+      <input class="form-input" id="e-fullName" value="${escapeHtml(e.fullName)}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Chức danh</label>
+      <select class="form-select" id="e-role">
+        ${ROLES.map(r=>`<option value="${r}" ${r===e.role?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="e-email" value="${escapeHtml(e.email||'')}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Số điện thoại</label>
+      <input class="form-input" id="e-phone" value="${escapeHtml(e.phone||'')}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">${isEdit ? 'Đổi mật khẩu (để trống = giữ MK cũ)' : 'Mật khẩu đăng nhập ban đầu'}</label>
+      <input type="text" class="form-input" id="e-password" value="${isEdit ? '' : ''}" placeholder="${isEdit ? 'Nhập MK mới...' : 'Mặc định: 12345'}" />
+      <span class="text-xs text-muted">${isEdit ? (e.passwordHash ? '✓ NV đã có mật khẩu. Để trống nếu không đổi.' : '⚠ NV chưa có mật khẩu, hãy đặt để NV đăng nhập được.') : 'Nếu để trống, NV sẽ dùng MK mặc định "12345". NV có thể tự đổi sau.'}</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label">&nbsp;</label>
+      <div class="text-xs text-muted" style="padding:8px 0">💡 Cấp MK cho NV đăng nhập với vai trò Thành viên Thiết kế. NV có thể đổi MK sau khi đăng nhập.</div>
+    </div>
+    <div class="form-group full">
+      <label class="form-label">Ghi chú</label>
+      <textarea class="form-textarea" id="e-notes">${escapeHtml(e.notes||'')}</textarea>
+    </div>
+  </div>`;
+  showModal(isEdit ? 'Sửa nhân viên' : 'Thêm nhân viên', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitEmployeeForm(${isEdit ? `'${id}'` : 'null'})` }
+  ]);
+}
+
+function submitEmployeeForm(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const data = {
+    code: document.getElementById('e-code').value.trim(),
+    fullName: document.getElementById('e-fullName').value.trim(),
+    role: document.getElementById('e-role').value,
+    email: document.getElementById('e-email').value.trim(),
+    phone: document.getElementById('e-phone').value.trim(),
+    status: document.getElementById('e-status').value,
+    notes: document.getElementById('e-notes').value.trim()
+  };
+  if (!data.fullName) return toast('Vui lòng nhập họ tên', 'error');
+  if (!data.code) return toast('Vui lòng nhập mã NV', 'error');
+
+  const newPwd = document.getElementById('e-password').value.trim();
+
+  if (id) {
+    const e = state.employees.find(x => x.id === id);
+    Object.assign(e, data);
+    // Only update password if new value provided
+    if (newPwd) {
+      e.passwordHash = simpleHash(newPwd);
+      toast('Cập nhật NV + đặt mật khẩu mới: "' + newPwd + '" — báo cho NV', 'success', 6000);
+    } else {
+      toast('Cập nhật nhân viên thành công', 'success');
+    }
+  } else {
+    // For new employee, use provided password or default
+    const initialPwd = newPwd || '12345';
+    state.employees.push({
+      id: uid('e_'),
+      ...data,
+      passwordHash: simpleHash(initialPwd)
+    });
+    toast('Thêm NV thành công. Mật khẩu đăng nhập: "' + initialPwd + '" — báo cho NV', 'success', 7000);
+  }
+  saveState();
+  closeModal();
+  render();
+}
+
+function resetEmployeePassword(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const e = state.employees.find(x => x.id === id);
+  if (!e) return;
+  const newPwd = prompt('🔑 ĐẶT/RESET MẬT KHẨU CHO NV\n\nNV: ' + e.fullName + ' (' + e.code + ')\n\nNhập mật khẩu mới (≥4 ký tự):', '12345');
+  if (!newPwd) return;
+  if (newPwd.length < 4) { alert('Mật khẩu phải ≥4 ký tự'); return; }
+  e.passwordHash = simpleHash(newPwd);
+  saveState();
+  alert('✅ Đã đặt mật khẩu cho ' + e.fullName + '\n\nMật khẩu: ' + newPwd + '\n\nGửi mật khẩu này cho NV. NV có thể đổi MK sau khi đăng nhập.');
+  toast('Đã reset mật khẩu cho ' + e.fullName, 'success', 5000);
+}
+
+function deleteEmployee(id) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const e = state.employees.find(x => x.id === id);
+  if (!e) return;
+  const tasksAssigned = state.projects.flatMap(p => (p.tasks||[]).filter(t => t.assigneeId === id)).length;
+  let warn = '';
+  if (tasksAssigned > 0) warn = `<br>Nhân viên này đang được giao <strong>${tasksAssigned}</strong> nhiệm vụ. Các nhiệm vụ sẽ bị bỏ trống người thực hiện.`;
+  showConfirm(`Xóa nhân viên <strong>${escapeHtml(e.fullName)}</strong>?${warn}`, () => {
+    state.projects.forEach(p => (p.tasks||[]).forEach(t => { if (t.assigneeId === id) t.assigneeId = ''; }));
+    state.employees = state.employees.filter(x => x.id !== id);
+    saveState();
+    render();
+    toast('Đã xóa nhân viên', 'success');
+  });
+}
+
+/* ============================================================
+   REPORTS VIEW
+   ============================================================ */
+function renderReports(content, actions) {
+  const projects = state.projects;
+  const allTasks = projects.flatMap(p => (p.tasks||[]).map(t => ({...t, projectName: p.name, projectCode: p.code})));
+
+  // Aggregated stats
+  const totalCV = projects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
+  const completedProjects = projects.filter(p => p.status === 'Hoàn thành');
+  const completedCV = completedProjects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
+  const completedTasks = allTasks.filter(t => t.status === 'Hoàn thành').length;
+  const totalTasks = allTasks.length;
+  const overdueTasks = allTasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0);
+
+  let html = `<div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">Tổng GT HĐ</div><div class="stat-value">${fmtMoney(totalCV)}</div></div>
+    <div class="stat-card success"><div class="stat-label">GT HĐ đã hoàn thành</div><div class="stat-value">${fmtMoney(completedCV)}</div><div class="stat-sub">${completedProjects.length}/${projects.length} dự án</div></div>
+    <div class="stat-card"><div class="stat-label">Nhiệm vụ hoàn thành</div><div class="stat-value">${completedTasks}/${totalTasks}</div><div class="stat-sub">${totalTasks?Math.round(completedTasks/totalTasks*100):0}% hoàn thành</div></div>
+    <div class="stat-card danger"><div class="stat-label">Nhiệm vụ trễ hạn</div><div class="stat-value">${overdueTasks.length}</div></div>
+  </div>`;
+
+  // Workload report
+  html += `<div class="card">
+    <div class="card-header"><h3 class="card-title">📊 Báo cáo khối lượng theo nhân viên</h3>
+      <button class="btn btn-sm" onclick="exportEmployeeReport()">📥 Xuất CSV</button>
+    </div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>Mã NV</th><th>Họ tên</th><th>Chức danh</th>
+        <th class="center">Tổng NV</th><th class="center">Hoàn thành</th><th class="center">Đang làm</th>
+        <th class="center">Trễ hạn</th><th class="center">Tỷ lệ HT</th>
+      </tr></thead><tbody>`;
+  state.employees.forEach(emp => {
+    const tasks = allTasks.filter(t => t.assigneeId === emp.id);
+    const done = tasks.filter(t => t.status === 'Hoàn thành').length;
+    const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
+    const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+    const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
+    html += `<tr>
+      <td>${escapeHtml(emp.code)}</td>
+      <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+      <td>${escapeHtml(emp.role)}</td>
+      <td class="center">${tasks.length}</td>
+      <td class="center"><span class="badge badge-success">${done}</span></td>
+      <td class="center"><span class="badge badge-info">${inProg}</span></td>
+      <td class="center">${od ? '<span class="badge badge-danger">'+od+'</span>' : '0'}</td>
+      <td class="center">${rate}%</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  // Project report
+  html += `<div class="card">
+    <div class="card-header"><h3 class="card-title">📋 Báo cáo dự án</h3>
+      <button class="btn btn-sm" onclick="exportProjectReport()">📥 Xuất CSV</button>
+    </div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>Mã DA</th><th>Tên dự án</th><th>CĐT</th><th>GT HĐ</th>
+        <th>Hạn TK</th><th>Tiến độ</th><th>NV/Tổng</th><th>Trạng thái</th>
+      </tr></thead><tbody>`;
+  projects.forEach(p => {
+    const prog = computeProjectProgress(p);
+    const compStatus = projectStatusComputed(p);
+    const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
+    const total = (p.tasks||[]).length;
+    const done = (p.tasks||[]).filter(t => t.status === 'Hoàn thành').length;
+    const stClass = compStatus === 'Hoàn thành' ? 'success' : compStatus === 'Chậm tiến độ' ? 'danger' : 'info';
+    html += `<tr class="${rowClassForLevel(lvl)}">
+      <td>${escapeHtml(p.code||'')}</td>
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.investor||'—')}</td>
+      <td class="num">${fmtMoney(p.contractValue)}</td>
+      <td>${fmtDate(p.designDeadline)}</td>
+      <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div>${prog}%</div></td>
+      <td class="center">${done}/${total}</td>
+      <td><span class="badge badge-${stClass}">${compStatus}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+  content.innerHTML = html;
+}
+
+function exportEmployeeReport() {
+  const allTasks = state.projects.flatMap(p => (p.tasks||[]).map(t => ({...t, projectName: p.name, projectCode: p.code})));
+  let csv = '﻿' + 'Mã NV,Họ tên,Chức danh,Tổng nhiệm vụ,Hoàn thành,Đang làm,Trễ hạn,Tỷ lệ HT\n';
+  state.employees.forEach(e => {
+    const tasks = allTasks.filter(t => t.assigneeId === e.id);
+    const done = tasks.filter(t => t.status === 'Hoàn thành').length;
+    const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
+    const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+    const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
+    csv += `"${e.code}","${e.fullName}","${e.role}",${tasks.length},${done},${inProg},${od},${rate}%\n`;
+  });
+  downloadFile('bao_cao_nhan_vien.csv', csv, 'text/csv;charset=utf-8');
+  toast('Đã xuất báo cáo nhân viên', 'success');
+}
+
+function exportProjectReport() {
+  let csv = '﻿' + 'Mã DA,Tên dự án,Chủ đầu tư,Địa điểm,Số HĐ,GT HĐ,Ngày ký,Bắt đầu TK,Hạn TK,Hạn ND105,Tiến độ %,Số nhiệm vụ,Hoàn thành,Trạng thái\n';
+  state.projects.forEach(p => {
+    const prog = computeProjectProgress(p);
+    const total = (p.tasks||[]).length;
+    const done = (p.tasks||[]).filter(t => t.status === 'Hoàn thành').length;
+    csv += `"${p.code||''}","${(p.name||'').replace(/"/g,'""')}","${(p.investor||'').replace(/"/g,'""')}","${(p.location||'').replace(/"/g,'""')}","${p.contractNo||''}","${p.contractValue||0}","${p.contractDate||''}","${p.designStart||''}","${p.designDeadline||''}","${p.pccc105Deadline||''}",${prog},${total},${done},"${projectStatusComputed(p)}"\n`;
+  });
+  downloadFile('bao_cao_du_an.csv', csv, 'text/csv;charset=utf-8');
+  toast('Đã xuất báo cáo dự án', 'success');
+}
+
+/* ============================================================
+   CONFIG VIEW
+   ============================================================ */
+function renderConfig(content, actions) {
+  const c = state.config;
+  let html = `<div class="card">
+    <div class="card-header"><h3 class="card-title">⚙️ Cấu hình ngưỡng cảnh báo</h3></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Chế độ cảnh báo</label>
+        <select class="form-select" id="c-warningMode">
+          <option value="percent" ${c.warningMode==='percent'?'selected':''}>Theo % thời gian còn lại</option>
+          <option value="days" ${c.warningMode==='days'?'selected':''}>Theo số ngày còn lại</option>
+          <option value="either" ${c.warningMode==='either'?'selected':''}>Cả hai (kích hoạt khi 1 trong 2 đạt ngưỡng)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tên doanh nghiệp</label>
+        <input class="form-input" id="c-companyName" value="${escapeHtml(c.companyName||'')}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngưỡng % thời gian còn lại để cảnh báo VÀNG</label>
+        <input type="number" min="0" max="100" class="form-input" id="c-thresholdPercent" value="${c.thresholdPercent}" />
+        <span class="text-xs text-muted">VD: 30 = khi còn ≤ 30% tổng thời gian thì cảnh báo</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngưỡng số ngày còn lại để cảnh báo VÀNG</label>
+        <input type="number" min="0" max="365" class="form-input" id="c-thresholdDays" value="${c.thresholdDays}" />
+        <span class="text-xs text-muted">VD: 3 = khi còn ≤ 3 ngày thì cảnh báo</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số ngày mặc định cho thẩm duyệt PCCC ND105</label>
+        <input type="number" min="1" max="60" class="form-input" id="c-pccc105DefaultDays" value="${c.pccc105DefaultDays}" />
+      </div>
+    </div>
+    <div class="mt-4">
+      <button class="btn btn-primary lead-only" onclick="saveConfig()">💾 Lưu cấu hình</button>
+    </div>
+  </div>`;
+
+  html += `<div class="card">
+    <div class="card-header"><h3 class="card-title">☁️ Đồng bộ Google Sheets</h3></div>
+    <p class="text-muted mb-3">Dữ liệu được lưu trên Google Sheets và đồng bộ tự động khi lưu. Mọi máy tính mở file đều dùng chung một nguồn dữ liệu.</p>
+    <div class="info-grid mb-3">
+      <div class="info-item">
+        <span class="info-label">Trạng thái</span>
+        <span class="info-value" style="color:${hasSyncEnabled()?'#16a34a':'#dc2626'}">${hasSyncEnabled() ? '✅ Đang bật' : '❌ Chưa cấu hình'}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Web App URL</span>
+        <span class="info-value text-xs" style="word-break:break-all">${getGasUrl() ? getGasUrl().slice(0,60)+'…' : '— Chưa có —'}</span>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button class="btn btn-primary lead-only" onclick="configureGasUrl()">⚙️ Cấu hình URL</button>
+      <button class="btn btn-success lead-only" onclick="manualPushCloud()">⬆️ Đẩy lên Sheets ngay</button>
+      <button class="btn lead-only" onclick="manualPullCloud()">⬇️ Kéo từ Sheets về</button>
+    </div>
+    <div class="mt-3" style="background:#f0f9ff;border-left:4px solid #0ea5e9;padding:12px 14px;border-radius:6px;font-size:12px;color:#0c4a6e">
+      <strong>📋 Hướng dẫn thiết lập (làm 1 lần):</strong><br>
+      <ol style="margin:8px 0 0;padding-left:18px;line-height:2">
+        <li>Vào <a href="https://sheets.google.com" target="_blank" style="color:#0ea5e9">sheets.google.com</a> → Tạo Google Sheet mới → đặt tên tùy ý (VD: <em>QLTKPCCC_Data</em>)</li>
+        <li>Trong Sheet, vào menu <strong>Extensions → Apps Script</strong></li>
+        <li>Xóa code mặc định, dán đoạn code Apps Script (xem bên dưới)</li>
+        <li>Nhấn <strong>Deploy → New deployment</strong> → Type: <em>Web app</em> → Execute as: <em>Me</em> → Who has access: <em>Anyone</em> → Deploy</li>
+        <li>Copy <strong>Web App URL</strong> → Dán vào ô "Cấu hình URL" ở trên</li>
+      </ol>
+    </div>
+    <div class="mt-3">
+      <div style="font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:6px">📄 Code Apps Script (copy toàn bộ):</div>
+      <pre id="gas-code-block" style="background:#1e293b;color:#e2e8f0;padding:14px;border-radius:6px;font-size:11px;overflow-x:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all">${escapeHtml(getAppsScriptCode())}</pre>
+      <button class="btn btn-sm mt-2" onclick="copyGasCode()">📋 Copy code</button>
+    </div>
+  </div>`;
+
+  html += `<div class="card">
+    <div class="card-header"><h3 class="card-title">💾 Sao lưu & khôi phục dữ liệu</h3></div>
+    <p class="text-muted">Dữ liệu lưu cả local (trình duyệt) lẫn Google Sheets (nếu đã cấu hình). Khuyến nghị xuất file backup định kỳ.</p>
+    <div class="flex gap-2 mt-2 flex-wrap">
+      <button class="btn btn-primary" onclick="exportData()">📥 Xuất file backup (.json)</button>
+      <button class="btn lead-only" onclick="document.getElementById('import-file').click()">📤 Khôi phục từ file</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
+      <button class="btn btn-warning lead-only" onclick="loadSampleData()">🎲 Tải dữ liệu mẫu</button>
+      <button class="btn btn-warning lead-only" onclick="resetAdminPin()">🔑 Reset mật khẩu Quản lý</button>
+      <button class="btn btn-danger lead-only" onclick="resetAllData()">🗑️ Xóa toàn bộ dữ liệu</button>
+    </div>
+  </div>`;
+
+  html += `<div class="card">
+    <div class="card-header"><h3 class="card-title">📊 Thống kê</h3></div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Số nhân viên</span><span class="info-value large">${state.employees.length}</span></div>
+      <div class="info-item"><span class="info-label">Số dự án</span><span class="info-value large">${state.projects.length}</span></div>
+      <div class="info-item"><span class="info-label">Tổng số nhiệm vụ</span><span class="info-value large">${state.projects.reduce((s,p) => s + (p.tasks||[]).length, 0)}</span></div>
+      <div class="info-item"><span class="info-label">Lần lưu cuối</span><span class="info-value">${state.meta.lastSaved ? new Date(state.meta.lastSaved).toLocaleString('vi-VN') : '—'}</span></div>
+    </div>
+  </div>`;
+
+  content.innerHTML = html;
+}
+
+function saveConfig() {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  state.config.warningMode = document.getElementById('c-warningMode').value;
+  state.config.thresholdPercent = parseInt(document.getElementById('c-thresholdPercent').value) || 30;
+  state.config.thresholdDays = parseInt(document.getElementById('c-thresholdDays').value) || 3;
+  state.config.companyName = document.getElementById('c-companyName').value.trim();
+  state.config.pccc105DefaultDays = parseInt(document.getElementById('c-pccc105DefaultDays').value) || 15;
+  saveState();
+  toast('Đã lưu cấu hình', 'success');
+  render();
+}
+
+function exportData() {
+  const data = JSON.stringify(state, null, 2);
+  const filename = 'backup_qltk_' + new Date().toISOString().slice(0,10) + '.json';
+  downloadFile(filename, data, 'application/json');
+  toast('Đã xuất file backup', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.employees || !parsed.projects) throw new Error('File không đúng định dạng');
+      showConfirm('Khôi phục dữ liệu sẽ <strong>ghi đè</strong> dữ liệu hiện tại. Tiếp tục?', () => {
+        state.employees = parsed.employees;
+        state.projects = parsed.projects;
+        if (parsed.config) state.config = { ...defaultConfig, ...parsed.config };
+        saveState();
+        toast('Khôi phục dữ liệu thành công', 'success');
+        render();
+      });
+    } catch (err) {
+      toast('Lỗi đọc file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetAllData() {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  showConfirm('⚠️ Xóa <strong>TOÀN BỘ</strong> dữ liệu (nhân viên, dự án, nhiệm vụ)? Không thể khôi phục!', () => {
+    state.employees = [];
+    state.projects = [];
+    state.config = { ...defaultConfig };
+    saveState();
+    toast('Đã xóa toàn bộ dữ liệu', 'success');
+    navigate('dashboard');
+  });
+}
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   SAMPLE DATA
+   ============================================================ */
+function loadSampleData() {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  showConfirm('Tải dữ liệu mẫu sẽ <strong>thêm</strong> nhân viên & dự án mẫu vào dữ liệu hiện tại. Tiếp tục?', () => {
+    const today = new Date();
+    const day = (n) => { const d = new Date(today); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+
+    const dpwd = simpleHash('12345');
+    const emps = [
+      { id: uid('e_'), code: 'NV001', fullName: 'Nguyễn Văn An', role: 'Trưởng nhóm TK', email: 'an.nv@pccc.vn', phone: '0901234567', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV002', fullName: 'Trần Thị Bình', role: 'KS Thiết kế cao cấp', email: 'binh.tt@pccc.vn', phone: '0901234568', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV003', fullName: 'Lê Quang Cường', role: 'Kỹ sư Thiết kế', email: 'cuong.lq@pccc.vn', phone: '0901234569', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV004', fullName: 'Phạm Thị Dung', role: 'BIM Modeler', email: 'dung.pt@pccc.vn', phone: '0901234570', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV005', fullName: 'Hoàng Minh Đức', role: 'Dự toán viên', email: 'duc.hm@pccc.vn', phone: '0901234571', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV006', fullName: 'Vũ Thị Hà', role: 'Kỹ thuật viên TK', email: 'ha.vt@pccc.vn', phone: '0901234572', status: 'Nghỉ phép', passwordHash: dpwd }
+    ];
+    state.employees = state.employees.concat(emps);
+
+    // Project 1: ongoing, has overdue task
+    const p1 = {
+      id: uid('p_'), code: 'DA001',
+      name: 'Hệ thống PCCC Chung cư The Sun – Cầu Giấy',
+      investor: 'Công ty CP Đầu tư Bất động sản Sun Group',
+      location: 'Số 100 Cầu Giấy, Hà Nội',
+      contractNo: 'HĐ-TK-2025/001',
+      contractValue: 850000000,
+      paidAmount: 425000000,
+      investorContactName: 'Trần Văn Hùng',
+      investorContactPhone: '0912345678',
+      architectCompany: 'Công ty CP Kiến trúc Hà Nội',
+      architectManagerName: 'KTS Phạm Quốc Toàn',
+      architectManagerPhone: '0987654321',
+      pccc105FileCode: 'G01.801.307-260130-00017',
+      pc07OfficerName: 'Đại úy Lê Minh Khôi',
+      pc07OfficerPhone: '0976543210',
+      appraisalFee: 12500000,
+      appraisalFeeDate: day(-22),
+      contractDate: day(-30),
+      designStart: day(-25),
+      designDeadline: day(20),
+      pccc105SubmitDate: day(15),
+      pccc105Deadline: day(45),
+      status: 'Đang triển khai',
+      notes: 'Dự án cao tầng 28 tầng, cần làm gấp.',
+      tasks: [
+        { id: uid('t_'), name: 'Khảo sát hiện trạng & đánh giá rủi ro cháy', assigneeId: emps[1].id, startDate: day(-25), deadline: day(-20), progress: 100, completedDate: day(-21), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Thuyết minh giải pháp PCCC tổng thể', assigneeId: emps[0].id, startDate: day(-20), deadline: day(-10), progress: 100, completedDate: day(-12), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Bản vẽ mặt bằng hệ Sprinkler tầng hầm – tầng 5', assigneeId: emps[2].id, startDate: day(-10), deadline: day(-3), progress: 60, completedDate: '', status: 'Đang thực hiện', notes: 'Đã trễ 3 ngày!' },
+        { id: uid('t_'), name: 'Bản vẽ mặt bằng hệ Sprinkler tầng 6-28', assigneeId: emps[2].id, startDate: day(-3), deadline: day(7), progress: 30, completedDate: '', status: 'Đang thực hiện', notes: '' },
+        { id: uid('t_'), name: 'Tính toán thủy lực hệ Sprinkler', assigneeId: emps[1].id, startDate: day(0), deadline: day(5), progress: 50, completedDate: '', status: 'Đang thực hiện', notes: '' },
+        { id: uid('t_'), name: 'Bản vẽ hệ thống báo cháy tự động', assigneeId: emps[3].id, startDate: day(2), deadline: day(12), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' },
+        { id: uid('t_'), name: 'Bản vẽ hệ thống tăng áp – hút khói', assigneeId: emps[2].id, startDate: day(5), deadline: day(15), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' },
+        { id: uid('t_'), name: 'Bản vẽ chi tiết phòng bơm chữa cháy', assigneeId: emps[3].id, startDate: day(8), deadline: day(15), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' },
+        { id: uid('t_'), name: 'Lập dự toán chi phí thiết bị PCCC', assigneeId: emps[4].id, startDate: day(10), deadline: day(18), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' },
+        { id: uid('t_'), name: 'Hồ sơ thẩm duyệt PCCC nộp Cảnh sát', assigneeId: emps[0].id, startDate: day(15), deadline: day(20), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: 'Theo ND105' }
+      ]
+    };
+
+    // Project 2: completed
+    const p2 = {
+      id: uid('p_'), code: 'DA002',
+      name: 'Cải tạo PCCC Nhà máy Bao bì Đông Á',
+      investor: 'Công ty TNHH Bao bì Đông Á',
+      location: 'KCN Bắc Thăng Long, Hà Nội',
+      contractNo: 'HĐ-TK-2024/088',
+      contractValue: 280000000,
+      contractDate: day(-90),
+      designStart: day(-85),
+      designDeadline: day(-30),
+      pccc105SubmitDate: day(-25),
+      pccc105Deadline: day(-10),
+      status: 'Hoàn thành',
+      notes: '',
+      tasks: [
+        { id: uid('t_'), name: 'Khảo sát & đánh giá hiện trạng', assigneeId: emps[2].id, startDate: day(-85), deadline: day(-78), progress: 100, completedDate: day(-79), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Thiết kế hệ Sprinkler bổ sung', assigneeId: emps[2].id, startDate: day(-78), deadline: day(-60), progress: 100, completedDate: day(-62), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Thiết kế báo cháy + cấp điện', assigneeId: emps[3].id, startDate: day(-65), deadline: day(-45), progress: 100, completedDate: day(-46), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Lập dự toán', assigneeId: emps[4].id, startDate: day(-50), deadline: day(-35), progress: 100, completedDate: day(-36), status: 'Hoàn thành', notes: '' },
+        { id: uid('t_'), name: 'Hồ sơ thẩm duyệt PCCC', assigneeId: emps[0].id, startDate: day(-35), deadline: day(-30), progress: 100, completedDate: day(-30), status: 'Hoàn thành', notes: '' }
+      ]
+    };
+
+    // Project 3: about to start, near deadline
+    const p3 = {
+      id: uid('p_'), code: 'DA003',
+      name: 'PCCC Trung tâm thương mại Việt Plaza',
+      investor: 'Việt Plaza Holdings',
+      location: 'Quận 7, TP. HCM',
+      contractNo: 'HĐ-TK-2025/003',
+      contractValue: 1200000000,
+      contractDate: day(-5),
+      designStart: day(-2),
+      designDeadline: day(45),
+      pccc105SubmitDate: '',
+      pccc105Deadline: day(60),
+      status: 'Đang triển khai',
+      notes: 'Dự án lớn, cần huy động toàn nhóm.',
+      tasks: [
+        { id: uid('t_'), name: 'Khảo sát hiện trạng', assigneeId: emps[1].id, startDate: day(-2), deadline: day(3), progress: 30, completedDate: '', status: 'Đang thực hiện', notes: '' },
+        { id: uid('t_'), name: 'Thuyết minh giải pháp tổng thể', assigneeId: emps[0].id, startDate: day(0), deadline: day(7), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' },
+        { id: uid('t_'), name: 'Bản vẽ mặt bằng PCCC khu A', assigneeId: emps[2].id, startDate: day(5), deadline: day(20), progress: 0, completedDate: '', status: 'Chưa bắt đầu', notes: '' }
+      ]
+    };
+
+    state.projects = state.projects.concat([p1, p2, p3]);
+    saveState();
+    toast(`Đã tạo ${emps.length} NV và 3 dự án mẫu`, 'success');
+    render();
+  });
+}
+
+/* ============================================================
+   MODAL HELPERS
+   ============================================================ */
+function showModal(title, body, buttons, options = {}) {
+  document.getElementById('modal-title').innerHTML = title;
+  document.getElementById('modal-body').innerHTML = body;
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = (buttons||[]).map(b => `<button class="btn ${b.class||''}" onclick="${b.onclick}">${b.label}</button>`).join('');
+  document.getElementById('modal').classList.toggle('modal-lg', !!options.large);
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function showConfirm(message, onConfirm) {
+  window._confirmCb = onConfirm;
+  showModal('Xác nhận', `<div class="confirm-msg">${message}</div>`, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: 'Xác nhận', class: 'btn-danger', onclick: '(window._confirmCb||function(){})(); closeModal();' }
+  ]);
+}
+
+function getAppsScriptCode() {
+  return `// ====================================================
+// Google Apps Script cho Quản lý Thiết kế PCCC
+// Hướng dẫn: Deploy → New deployment → Web app
+//   Execute as: Me | Who has access: Anyone
+// ====================================================
+
+const SHEET_NAME = 'AppData';
+const DATA_CELL  = 'A1';       // Toàn bộ JSON lưu ở ô A1
+
+function doGet(e) {
+  const action = (e && e.parameter && e.parameter.action) || 'load';
+
+  if (action === 'ping') {
+    return jsonResponse({ status: 'ok', message: 'pong' });
+  }
+
+  if (action === 'load') {
+    try {
+      const sheet = getOrCreateSheet();
+      const cell  = sheet.getRange(DATA_CELL);
+      const value = cell.getValue();
+      if (!value) return jsonResponse({ status: 'empty' });
+      const payload = JSON.parse(value);
+      return jsonResponse({ status: 'ok', payload });
+    } catch (err) {
+      return jsonResponse({ status: 'error', message: err.message });
+    }
+  }
+
+  return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
+}
+
+function doPost(e) {
+  try {
+    const body   = JSON.parse(e.postData.contents);
+    const action = body.action || 'save';
+
+    if (action === 'save') {
+      const sheet = getOrCreateSheet();
+      sheet.getRange(DATA_CELL).setValue(JSON.stringify(body.payload));
+      // Ghi thêm metadata ở B1 để dễ debug
+      sheet.getRange('B1').setValue('Cập nhật: ' + new Date().toLocaleString('vi-VN'));
+      return jsonResponse({ status: 'ok', message: 'Saved' });
+    }
+
+    return jsonResponse({ status: 'error', message: 'Unknown action' });
+  } catch (err) {
+    return jsonResponse({ status: 'error', message: err.message });
+  }
+}
+
+function getOrCreateSheet() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  let   sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.getRange('A1:B1').setFontSize(10);
+  }
+  return sheet;
+}
+
+function jsonResponse(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+}
+
+function copyGasCode() {
+  const code = getAppsScriptCode();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code)
+      .then(() => toast('✅ Đã copy code Apps Script!', 'success'))
+      .catch(() => fallbackCopy(code));
+  } else {
+    fallbackCopy(code);
+  }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  toast('✅ Đã copy code Apps Script!', 'success');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.view));
+});
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-overlay') closeModal();
+});
+
+// ESC closes modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+loadState();
+loadRole();
+applyRoleUI();
+
+// Khởi động: load local trước để UI hiện nhanh, rồi pull cloud nền
+if (!currentRole) {
+  showLoginScreen();
+} else {
+  render();
+  // Nếu sync đã cấu hình, tự kéo dữ liệu mới nhất từ cloud
+  if (hasSyncEnabled()) {
+    pullFromCloud().then(ok => {
+      if (ok) {
+        updateLastSaved();
+        render();
+        toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000);
+      }
+    });
+  }
+}
+</script>
+</body>
+</html>
