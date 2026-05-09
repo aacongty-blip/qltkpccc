@@ -351,6 +351,26 @@
 </head>
 <body>
 
+<!-- Loading overlay (hiện khi kéo dữ liệu cloud lúc khởi động) -->
+<div id="loading-overlay" style="
+  position:fixed;inset:0;z-index:3000;
+  background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;gap:16px;
+">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:72px;height:72px">
+    <circle cx="100" cy="100" r="90" fill="#fff" stroke="#C8A540" stroke-width="7"/>
+    <path d="M 100 32 L 64 168 M 100 32 L 136 168" stroke="#1E40AF" stroke-width="12" fill="none" stroke-linecap="butt"/>
+    <path d="M 100 73 L 80 162 M 100 73 L 120 162" stroke="#C8A540" stroke-width="9" fill="none" stroke-linecap="butt"/>
+    <path d="M 45 118 Q 100 100 155 116" stroke="#DC2626" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </svg>
+  <div style="font-size:18px;font-weight:700;letter-spacing:1px">CÔNG TY AA</div>
+  <div style="font-size:13px;color:#93c5fd" id="loading-msg">☁️ Đang tải dữ liệu từ Google Sheets…</div>
+  <div style="width:200px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden">
+    <div id="loading-bar" style="height:100%;width:0%;background:#60a5fa;border-radius:2px;transition:width 0.4s ease"></div>
+  </div>
+</div>
+
 <!-- Login Screen -->
 <div id="login-screen" class="hidden">
   <div class="login-card">
@@ -785,7 +805,7 @@ const STORAGE_KEY = 'ql_thietke_pccc_v1';
 // Sau khi dán, lưu file lại → TẤT CẢ máy mở file này đều tự đồng bộ
 // Ví dụ: 'https://script.google.com/macros/s/ABC123.../exec'
 // =====================================================================
-const HARDCODED_GAS_URL = 'https://script.google.com/macros/s/AKfycbw4F4Ml34zIaBklnhyr0y1eE2I0-zm3tuVw8lRnCw_QpKBIWtp9MMnqE2k3lAyD9vaL/exec';   // ← DÁN URL VÀO ĐÂY
+const HARDCODED_GAS_URL = '';   // ← DÁN URL VÀO ĐÂY
 
 const defaultConfig = {
   thresholdPercent: 30,
@@ -2776,22 +2796,45 @@ loadState();
 loadRole();
 applyRoleUI();
 
-// Khởi động: load local trước để UI hiện nhanh, rồi pull cloud nền
-if (!currentRole) {
-  showLoginScreen();
-} else {
-  render();
-  // Nếu sync đã cấu hình, tự kéo dữ liệu mới nhất từ cloud
+function setLoadingMsg(msg, pct) {
+  const m = document.getElementById('loading-msg');
+  const b = document.getElementById('loading-bar');
+  if (m) m.textContent = msg;
+  if (b) b.style.width = pct + '%';
+}
+function hideLoading() {
+  const el = document.getElementById('loading-overlay');
+  if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 350); }
+}
+
+async function initApp() {
   if (hasSyncEnabled()) {
-    pullFromCloud().then(ok => {
-      if (ok) {
-        updateLastSaved();
-        render();
-        toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000);
-      }
-    });
+    setLoadingMsg('☁️ Đang tải dữ liệu từ Google Sheets…', 30);
+    try {
+      await pullFromCloud();
+      setLoadingMsg('✅ Tải dữ liệu thành công!', 100);
+      updateLastSaved();
+    } catch(e) {
+      setLoadingMsg('⚠️ Không kết nối được cloud, dùng dữ liệu local.', 100);
+      await new Promise(r => setTimeout(r, 800));
+    }
+    await new Promise(r => setTimeout(r, 400)); // brief pause để user thấy kết quả
+  } else {
+    setLoadingMsg('📂 Đang khởi động…', 100);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  hideLoading();
+
+  if (!currentRole) {
+    showLoginScreen();
+  } else {
+    render();
+    if (hasSyncEnabled()) toast('☁️ Đã tải dữ liệu mới nhất từ Google Sheets', 'success', 3000);
   }
 }
+
+initApp();
 </script>
 </body>
 </html>
