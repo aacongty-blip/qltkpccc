@@ -880,16 +880,15 @@ async function pullFromCloud() {
 
 /* ---------- Xử lý dữ liệu nhận từ cloud ---------- */
 function applyCloudData(data) {
-  if (!data || !data.employees || !data.projects) {
-    console.log('applyCloudData: dữ liệu không hợp lệ', data);
+  if (!data) {
+    console.log('applyCloudData: data null/undefined');
     return;
   }
   const cloudTs = data.meta && data.meta.lastSaved;
   const localTs = state.meta && state.meta.lastSaved;
   console.log('applyCloudData — cloud:', cloudTs, '| local:', localTs);
-  // Bỏ guard timestamp — luôn nhận dữ liệu từ cloud (Firebase là nguồn sự thật)
-  state.employees = data.employees;
-  state.projects  = data.projects;
+  state.employees = data.employees || [];
+  state.projects  = data.projects  || [];
   state.config    = { ...defaultConfig, ...(data.config || {}) };
   state.meta      = data.meta || { lastSaved: null, version: 1 };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
