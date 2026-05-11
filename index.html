@@ -134,7 +134,7 @@
   }
   table.data-table tr:hover { background: var(--gray-50); }
   table.data-table tr:last-child td { border-bottom: none; }
-  table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table .num { text-align: left; font-variant-numeric: tabular-nums; }
   table.data-table .center { text-align: center; }
 
   /* Status badges */
@@ -1168,6 +1168,12 @@ function computeProjectPaid(project) {
     .reduce((sum, pm) => sum + (Number(pm.amount) || 0), 0);
 }
 
+function computeAppraisalFee(project) {
+  return (project.appraisalReports || []).reduce((sum, r) => {
+    return sum + (Number(r.feeOfficer) || 0) + (Number(r.feeAgency) || 0);
+  }, 0);
+}
+
 function projectStatusComputed(project) {
   if (project.status === 'Hoàn thành' || project.status === 'Hủy' || project.status === 'Tạm dừng') return project.status;
   // If has overdue task → "Chậm tiến độ" implicit
@@ -1931,14 +1937,6 @@ function openProjectForm(id) {
         <label class="form-label">SĐT cán bộ PC07</label>
         <input type="tel" class="form-input" id="f-pc07OfficerPhone" value="${escapeHtml(p.pc07OfficerPhone||'')}" />
       </div>
-      <div class="form-group">
-        <label class="form-label">Phí thẩm định đã nộp (đ)</label>
-        <input type="number" class="form-input" id="f-appraisalFee" value="${p.appraisalFee||''}" placeholder="0" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Ngày nộp phí thẩm định</label>
-        <input type="text" class="form-input datepicker" id="f-appraisalFeeDate" value="${isoToDmy(p.appraisalFeeDate||'')}" placeholder="dd/mm/yyyy" />
-      </div>
     </div>
 
     <div class="form-section-title">📝 7. Ghi chú</div>
@@ -1977,8 +1975,6 @@ function submitProjectForm(id) {
     pccc105Deadline: dmyToIso(document.getElementById('f-pccc105Deadline').value),
     pc07OfficerName: document.getElementById('f-pc07OfficerName').value.trim(),
     pc07OfficerPhone: document.getElementById('f-pc07OfficerPhone').value.trim(),
-    appraisalFee: document.getElementById('f-appraisalFee').value,
-    appraisalFeeDate: dmyToIso(document.getElementById('f-appraisalFeeDate').value),
     status: document.getElementById('f-status').value,
     projectPhase: document.getElementById('f-projectPhase').value,
     notes: document.getElementById('f-notes').value.trim()
@@ -2086,7 +2082,7 @@ function renderProjectDetail(content, actions, projectId) {
         <div class="info-item"><span class="info-label">Ngày nộp hồ sơ</span><span class="info-value">${fmtDate(p.pccc105SubmitDate)}</span></div>
         <div class="info-item"><span class="info-label">Hạn thẩm duyệt</span><span class="info-value">${deadlineDisplay(p.pccc105Deadline)}</span></div>
         <div class="info-item"><span class="info-label">Cán bộ PC07</span><span class="info-value">${escapeHtml(p.pc07OfficerName||'—')}${p.pc07OfficerPhone?' · 📞 '+escapeHtml(p.pc07OfficerPhone):''}</span></div>
-        <div class="info-item"><span class="info-label">Phí thẩm định</span><span class="info-value">${fmtMoney(p.appraisalFee)}${p.appraisalFeeDate?' · '+fmtDate(p.appraisalFeeDate):''}</span></div>
+        <div class="info-item"><span class="info-label">Phí thẩm định</span><span class="info-value" style="color:var(--success);font-weight:600">${fmtMoney(computeAppraisalFee(p))}</span></div>
       </div>
       ${p.notes ? `<div class="mt-4"><div class="info-label">Ghi chú</div><div style="margin-top:6px;padding:10px;background:var(--gray-50);border-radius:6px;white-space:pre-wrap">${escapeHtml(p.notes)}</div></div>` : ''}
     </div>
@@ -2152,6 +2148,60 @@ function renderProjectDetail(content, actions, projectId) {
   }
   html += `</div>`;
 
+  // ── Báo cáo thẩm định ──
+  const reports = p.appraisalReports || [];
+  const totalAppraisalFee = computeAppraisalFee(p);
+
+  html += `<div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📋 Báo cáo thẩm định (${reports.length})</h3>
+      <button class="btn btn-primary btn-sm lead-only" onclick="openReportForm('${p.id}')">+ Thêm báo cáo</button>
+    </div>`;
+
+  if (reports.length === 0) {
+    html += `<div class="empty-state">
+      <div class="empty-state-icon">📄</div>
+      <p>Chưa có báo cáo thẩm định nào.</p>
+      <button class="btn btn-primary mt-2 lead-only" onclick="openReportForm('${p.id}')">+ Thêm báo cáo đầu tiên</button>
+    </div>`;
+  } else {
+    html += `<div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th style="width:40px">STT</th>
+        <th>Nội dung báo cáo</th>
+        <th>Người thực hiện</th>
+        <th>Ngày báo cáo</th>
+        <th>Tiền BC cán bộ</th>
+        <th>Tiền BC cơ quan</th>
+        <th>Trạng thái</th>
+        <th></th>
+      </tr></thead><tbody>`;
+    reports.forEach((r, idx) => {
+      const emp = state.employees.find(e => e.id === r.assigneeId);
+      const stClass = r.status === 'Đã hoàn thành' ? 'success' : 'progress';
+      html += `<tr>
+        <td class="center">${idx+1}</td>
+        <td><strong>${escapeHtml(r.name||'')}</strong></td>
+        <td>${emp ? escapeHtml(emp.fullName) : '<span class="text-muted">—</span>'}</td>
+        <td>${fmtDate(r.reportDate)}</td>
+        <td class="num">${fmtMoney(r.feeOfficer)}</td>
+        <td class="num">${fmtMoney(r.feeAgency)}</td>
+        <td><span class="badge badge-${stClass}">${r.status||'—'}</span></td>
+        <td>
+          ${canUpdateReport(r) && !isLead() ? `<button class="btn btn-sm btn-primary" onclick="openReportForm('${p.id}','${r.id}')">📝 Cập nhật</button>` : ''}
+          <button class="btn btn-sm lead-only" onclick="openReportForm('${p.id}','${r.id}')">Sửa</button>
+          <button class="btn btn-sm btn-danger lead-only" onclick="deleteReport('${p.id}','${r.id}')">×</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 0 0;border-top:1px solid var(--gray-200);margin-top:8px">
+      <span class="text-sm text-muted">Tổng phí thẩm định:</span>
+      <span style="font-size:18px;font-weight:700;color:var(--success)">${fmtMoney(totalAppraisalFee)}</span>
+    </div>`;
+  }
+  html += `</div>`;
+
   // ── Thanh toán thiết kế ──
   const payments = p.payments || [];
   const totalPaid = computeProjectPaid(p);
@@ -2192,6 +2242,7 @@ function renderProjectDetail(content, actions, projectId) {
         <td><span class="badge badge-${stClass}">${pm.status||'—'}</span></td>
         <td class="num"><strong>${fmtMoney(pm.amount)}</strong></td>
         <td>
+          ${canUpdatePayment(pm) && !isLead() ? `<button class="btn btn-sm btn-primary" onclick="openPaymentForm('${p.id}','${pm.id}')">📝 Cập nhật</button>` : ''}
           <button class="btn btn-sm lead-only" onclick="openPaymentForm('${p.id}','${pm.id}')">Sửa</button>
           <button class="btn btn-sm btn-danger lead-only" onclick="deletePayment('${p.id}','${pm.id}')">×</button>
         </td>
@@ -2250,12 +2301,126 @@ function onPaymentProgressInput(val) {
 }
 
 /* ============================================================
+   APPRAISAL REPORT FORM
+   ============================================================ */
+const REPORT_STATUS = ['Đang thực hiện', 'Đã hoàn thành'];
+
+function canUpdateReport(r) {
+  if (isLead()) return true;
+  if (currentRole === 'designer' && currentUserEmpId && r.assigneeId === currentUserEmpId) return true;
+  return false;
+}
+
+function openReportForm(projectId, reportId) {
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const isEdit = !!reportId;
+  const r = isEdit ? (project.appraisalReports||[]).find(x => x.id === reportId) : {
+    id: uid('rp_'), name: '', assigneeId: '', feeOfficer: '', feeAgency: '', reportDate: '', status: 'Đang thực hiện'
+  };
+  if (!r) return;
+
+  if (!isLead()) {
+    if (!isEdit) { toast('Bạn không có quyền thêm báo cáo', 'error'); return; }
+    if (!canUpdateReport(r)) { toast('Bạn chỉ có thể cập nhật báo cáo được giao cho mình', 'error'); return; }
+  }
+
+  const isDesigner = !isLead();
+  const empOptions = state.employees.map(e =>
+    `<option value="${e.id}" ${e.id===r.assigneeId?'selected':''}>${escapeHtml(e.fullName)}</option>`
+  ).join('');
+
+  const body = `
+    <div class="form-group">
+      <label class="form-label required">Nội dung báo cáo</label>
+      <input class="form-input" id="rp-name" value="${escapeHtml(r.name||'')}" placeholder="VD: Báo cáo thẩm định đợt 1" ${isDesigner?'readonly style="background:var(--gray-50)"':''} />
+    </div>
+    <div class="form-grid">
+      <div class="form-group" ${isDesigner?'style="display:none"':''}>
+        <label class="form-label">Người thực hiện</label>
+        <select class="form-select" id="rp-assignee">
+          <option value="">-- Chọn nhân viên --</option>
+          ${empOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày báo cáo</label>
+        <input type="text" class="form-input datepicker" id="rp-reportDate" value="${isoToDmy(r.reportDate||'')}" placeholder="dd/mm/yyyy" />
+      </div>
+      <div class="form-group" ${isDesigner?'style="display:none"':''}>
+        <label class="form-label">Số tiền BC cán bộ (đ)</label>
+        <input type="number" class="form-input" id="rp-feeOfficer" value="${r.feeOfficer||''}" placeholder="0" />
+      </div>
+      <div class="form-group" ${isDesigner?'style="display:none"':''}>
+        <label class="form-label">Số tiền BC cơ quan (đ)</label>
+        <input type="number" class="form-input" id="rp-feeAgency" value="${r.feeAgency||''}" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="rp-status">
+          ${REPORT_STATUS.map(s => `<option value="${s}" ${s===r.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+
+  showModal(isEdit ? 'Sửa báo cáo thẩm định' : 'Thêm báo cáo thẩm định', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitReportForm('${projectId}','${isEdit ? r.id : ''}')` }
+  ], { locked: true });
+}
+
+function submitReportForm(projectId, reportId) {
+  const name = document.getElementById('rp-name').value.trim();
+  if (!name) { toast('Vui lòng nhập nội dung báo cáo', 'error'); return; }
+
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  if (!project.appraisalReports) project.appraisalReports = [];
+
+  const existing = reportId ? project.appraisalReports.find(x => x.id === reportId) : null;
+  const data = {
+    id: reportId || uid('rp_'),
+    name,
+    assigneeId: isLead() ? document.getElementById('rp-assignee').value : (existing ? existing.assigneeId : ''),
+    feeOfficer: isLead() ? (Number(document.getElementById('rp-feeOfficer').value) || 0) : (existing ? existing.feeOfficer : 0),
+    feeAgency: isLead() ? (Number(document.getElementById('rp-feeAgency').value) || 0) : (existing ? existing.feeAgency : 0),
+    reportDate: dmyToIso(document.getElementById('rp-reportDate').value),
+    status: document.getElementById('rp-status').value,
+  };
+
+  const idx = project.appraisalReports.findIndex(x => x.id === reportId);
+  if (idx >= 0) project.appraisalReports[idx] = data;
+  else project.appraisalReports.push(data);
+
+  closeModal();
+  saveState();
+  toast(reportId ? 'Đã cập nhật báo cáo' : 'Đã thêm báo cáo thẩm định', 'success');
+  navigate('project_detail', projectId);
+}
+
+function deleteReport(projectId, reportId) {
+  showConfirm('Xóa báo cáo thẩm định này?', () => {
+    const project = state.projects.find(x => x.id === projectId);
+    if (!project) return;
+    project.appraisalReports = (project.appraisalReports||[]).filter(x => x.id !== reportId);
+    saveState();
+    toast('Đã xóa', 'success');
+    navigate('project_detail', projectId);
+  });
+}
+
+/* ============================================================
    PAYMENT FORM
    ============================================================ */
 const PAYMENT_STATUS = ['Đang thực hiện','Đang chờ duyệt','Đã hoàn thành'];
 
+function canUpdatePayment(pm) {
+  if (isLead()) return true;
+  if (currentRole === 'designer' && currentUserEmpId && pm.assigneeId === currentUserEmpId) return true;
+  return false;
+}
+
 function openPaymentForm(projectId, paymentId) {
-  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
   const project = state.projects.find(x => x.id === projectId);
   if (!project) return;
   const isEdit = !!paymentId;
@@ -2264,24 +2429,31 @@ function openPaymentForm(projectId, paymentId) {
   };
   if (!pm) return;
 
+  // Thành viên chỉ được sửa payment được giao cho mình, không được thêm mới
+  if (!isLead()) {
+    if (!isEdit) { toast('Bạn không có quyền thêm đợt thanh toán', 'error'); return; }
+    if (!canUpdatePayment(pm)) { toast('Bạn chỉ có thể cập nhật nhiệm vụ được giao cho mình', 'error'); return; }
+  }
+
   const empOptions = state.employees.map(e =>
     `<option value="${e.id}" ${e.id===pm.assigneeId?'selected':''}>${escapeHtml(e.fullName)}</option>`
   ).join('');
 
+  const isDesigner = !isLead();
   const body = `
     <div class="form-group">
       <label class="form-label required">Nội dung thanh toán</label>
-      <input class="form-input" id="pm-name" value="${escapeHtml(pm.name||'')}" placeholder="VD: Đợt 1 - Hồ sơ thiết kế cơ sở" />
+      <input class="form-input" id="pm-name" value="${escapeHtml(pm.name||'')}" placeholder="VD: Đợt 1 - Hồ sơ thiết kế cơ sở" ${isDesigner ? 'readonly style="background:var(--gray-50)"' : ''} />
     </div>
     <div class="form-grid">
-      <div class="form-group">
+      <div class="form-group" ${isDesigner ? 'style="display:none"' : ''}>
         <label class="form-label">Người thực hiện</label>
         <select class="form-select" id="pm-assignee">
           <option value="">-- Chọn nhân viên --</option>
           ${empOptions}
         </select>
       </div>
-      <div class="form-group">
+      <div class="form-group" ${isDesigner ? 'style="display:none"' : ''}>
         <label class="form-label">Số tiền (đ)</label>
         <input type="number" class="form-input" id="pm-amount" value="${pm.amount||''}" placeholder="0" />
       </div>
@@ -2311,11 +2483,13 @@ function submitPaymentForm(projectId, paymentId) {
   if (!project) return;
   if (!project.payments) project.payments = [];
 
+  const existing = paymentId ? project.payments.find(x => x.id === paymentId) : null;
   const data = {
     id: paymentId || uid('pm_'),
     name,
-    assigneeId: document.getElementById('pm-assignee').value,
-    amount: Number(document.getElementById('pm-amount').value) || 0,
+    // Designer không được đổi assignee và amount — giữ nguyên giá trị cũ
+    assigneeId: isLead() ? document.getElementById('pm-assignee').value : (existing ? existing.assigneeId : ''),
+    amount: isLead() ? (Number(document.getElementById('pm-amount').value) || 0) : (existing ? existing.amount : 0),
     status: document.getElementById('pm-status').value,
     progress: Math.min(100, Math.max(0, parseInt(document.getElementById('pm-progress').value)||0)),
   };
@@ -2736,7 +2910,7 @@ function renderReports(content, actions) {
     </div>
     <div class="table-wrap"><table class="data-table">
       <thead><tr>
-        <th>Mã DA</th><th>Tên dự án</th><th>CĐT</th><th>GT HĐ</th><th>GT đã TT</th>
+        <th>Mã DA</th><th>Tên dự án</th><th>CĐT</th><th>GT HĐ</th><th>GT đã TT</th><th>GT báo cáo</th>
         <th>Hạn TK</th><th>Tiến độ</th><th>NV/Tổng</th><th>Trạng thái</th>
       </tr></thead><tbody>`;
   projects.forEach(p => {
@@ -2752,6 +2926,7 @@ function renderReports(content, actions) {
       <td>${escapeHtml(p.investor||'—')}</td>
       <td class="num">${fmtMoney(p.contractValue)}</td>
       <td class="num" style="color:var(--success);font-weight:600">${fmtMoney(computeProjectPaid(p))}</td>
+      <td class="num" style="color:var(--primary);font-weight:600">${fmtMoney(computeAppraisalFee(p))}</td>
       <td>${fmtDate(p.designDeadline)}</td>
       <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar" style="width:${prog}%;background:${prog>=100?'var(--success)':prog>0?'var(--primary)':'var(--gray-300)'}"></div></div>${prog}%</div></td>
       <td class="center">${done}/${total}</td>
