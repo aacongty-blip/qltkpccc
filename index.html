@@ -1052,6 +1052,12 @@ function toast(msg, type = 'info', duration = 3000) {
 
 /* ---- Date helpers ---- */
 // yyyy-mm-dd → dd/mm/yyyy (for display in input)
+function progressBarColor(pct, status) {
+  if (pct >= 100 || status === 'Hoàn thành') return 'var(--success)';
+  if (pct > 0) return 'var(--primary)';
+  return 'var(--gray-300)';
+}
+
 function isoToDmy(iso) {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -1150,10 +1156,16 @@ function computeProjectProgress(project) {
   const total = project.tasks.length;
   let weighted = 0;
   project.tasks.forEach(t => {
-    if (t.status === 'Hoàn thành') weighted += 100;
-    else weighted += (t.progress || 0);
+    weighted += (t.status === 'Hoàn thành') ? 100 : (Number(t.progress) || 0);
   });
   return Math.round(weighted / total);
+}
+
+function computeProjectPaid(project) {
+  const payments = project.payments || [];
+  return payments
+    .filter(pm => pm.status === 'Đã hoàn thành')
+    .reduce((sum, pm) => sum + (Number(pm.amount) || 0), 0);
 }
 
 function projectStatusComputed(project) {
@@ -1296,20 +1308,39 @@ function renderMyTasks(content, actions) {
       <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn – cập nhật ngay</div>
     </div>
     <div class="table-wrap"><table class="data-table"><thead><tr>
-      <th>Dự án</th><th>Nội dung TK</th><th>Bắt đầu</th><th>Hạn</th><th>Tiến độ</th><th>Trạng thái</th><th>Cập nhật</th>
+      <th>Nội dung TK</th><th>Bắt đầu</th><th>Hạn</th><th>Tiến độ</th><th>Trạng thái</th><th>Cập nhật</th>
     </tr></thead><tbody>`;
+
+    // Group by project, sort by project code
+    const projectMap = {};
     active.forEach(t => {
-      const lvl = computeWarningLevel(t);
-      const stCls = t.status === 'Đang thực hiện' ? 'progress' : t.status === 'Đang chờ duyệt' ? 'info' : t.status === 'Tạm dừng' ? 'warning' : 'default';
-      html += `<tr class="${rowClassForLevel(lvl)}">
-        <td><strong>${escapeHtml(t.projectCode || '')}</strong><br><span class="text-xs text-muted">${escapeHtml(t.projectName)}</span></td>
-        <td><strong>${escapeHtml(t.name)}</strong>${t.notes ? '<div class="text-xs text-muted">'+escapeHtml(t.notes)+'</div>' : ''}</td>
-        <td>${fmtDate(t.startDate)}</td>
-        <td>${deadlineDisplay(t.deadline)}</td>
-        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${t.progress||0}%"></div></div>${t.progress||0}%</div></td>
-        <td><span class="badge badge-${stCls}">${t.status}</span></td>
-        <td><button class="btn btn-sm btn-primary" onclick="openMyTaskUpdate('${t.projectId}','${t.id}')">📝 Cập nhật</button></td>
+      const key = t.projectId;
+      if (!projectMap[key]) projectMap[key] = { code: t.projectCode||'', name: t.projectName||'', tasks: [] };
+      projectMap[key].tasks.push(t);
+    });
+    const sortedProjects = Object.values(projectMap).sort((a, b) => a.code.localeCompare(b.code));
+
+    sortedProjects.forEach(proj => {
+      // Project header row
+      html += `<tr style="background:var(--gray-50);border-top:2px solid var(--gray-200)">
+        <td colspan="6" style="padding:8px 12px">
+          <strong style="color:var(--primary);font-size:13px">${escapeHtml(proj.code)}</strong>
+          <span class="text-muted text-xs" style="margin-left:8px">${escapeHtml(proj.name)}</span>
+        </td>
       </tr>`;
+      // Task rows
+      proj.tasks.forEach(t => {
+        const lvl = computeWarningLevel(t);
+        const stCls = t.status === 'Đang thực hiện' ? 'progress' : t.status === 'Đang chờ duyệt' ? 'info' : t.status === 'Tạm dừng' ? 'warning' : 'default';
+        html += `<tr class="${rowClassForLevel(lvl)}">
+          <td style="padding-left:24px"><strong>${escapeHtml(t.name)}</strong>${t.notes ? '<div class="text-xs text-muted">'+escapeHtml(t.notes)+'</div>' : ''}</td>
+          <td>${fmtDate(t.startDate)}</td>
+          <td>${deadlineDisplay(t.deadline)}</td>
+          <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar" style="width:${t.progress||0}%;background:${progressBarColor(t.progress||0,t.status)}"></div></div>${t.progress||0}%</div></td>
+          <td><span class="badge badge-${stCls}">${t.status}</span></td>
+          <td><button class="btn btn-sm btn-primary" onclick="openMyTaskUpdate('${t.projectId}','${t.id}')">📝 Cập nhật</button></td>
+        </tr>`;
+      });
     });
     html += `</tbody></table></div>`;
   }
@@ -1318,15 +1349,29 @@ function renderMyTasks(content, actions) {
   if (completed.length > 0) {
     html += `<div class="card"><div class="card-header"><h3 class="card-title">✅ Đã hoàn thành (${completed.length})</h3></div>
       <div class="table-wrap"><table class="data-table"><thead><tr>
-        <th>Dự án</th><th>Nội dung</th><th>Hạn</th><th>HT thực tế</th>
+        <th>Nội dung</th><th>Hạn</th><th>HT thực tế</th>
       </tr></thead><tbody>`;
-    completed.slice(0, 20).forEach(t => {
-      html += `<tr class="row-success">
-        <td>${escapeHtml(t.projectCode || '')}</td>
-        <td>${escapeHtml(t.name)}</td>
-        <td>${fmtDate(t.deadline)}</td>
-        <td>${fmtDate(t.completedDate)}</td>
+
+    const projMapDone = {};
+    completed.forEach(t => {
+      const key = t.projectId;
+      if (!projMapDone[key]) projMapDone[key] = { code: t.projectCode||'', name: t.projectName||'', tasks: [] };
+      projMapDone[key].tasks.push(t);
+    });
+    Object.values(projMapDone).sort((a,b) => a.code.localeCompare(b.code)).forEach(proj => {
+      html += `<tr style="background:var(--gray-50);border-top:2px solid var(--gray-200)">
+        <td colspan="3" style="padding:8px 12px">
+          <strong style="color:var(--primary);font-size:13px">${escapeHtml(proj.code)}</strong>
+          <span class="text-muted text-xs" style="margin-left:8px">${escapeHtml(proj.name)}</span>
+        </td>
       </tr>`;
+      proj.tasks.forEach(t => {
+        html += `<tr class="row-success">
+          <td style="padding-left:24px">${escapeHtml(t.name)}</td>
+          <td>${fmtDate(t.deadline)}</td>
+          <td>${fmtDate(t.completedDate)}</td>
+        </tr>`;
+      });
     });
     html += `</tbody></table></div></div>`;
   }
@@ -1418,7 +1463,7 @@ function renderDashboard(content, actions) {
         <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
         <td>${escapeHtml(p.investor || '—')}</td>
         <td>${deadlineDisplay(p.designDeadline)}</td>
-        <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
+        <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar" style="width:${prog}%;background:${progressBarColor(prog,p.status)}"></div></div><span>${prog}%</span></div></td>
         <td>${badgeForLevel(lvl)}</td>
         <td><button class="btn btn-sm" onclick="navigate('project_detail','${p.id}')">Mở</button></td>
       </tr>`;
@@ -1644,7 +1689,7 @@ function renderProjTable() {
       <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
       <td>${escapeHtml(p.investor || '—')}</td>
       <td>${deadlineDisplay(p.designDeadline)}</td>
-      <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
+      <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar" style="width:${prog}%;background:${progressBarColor(prog,p.status)}"></div></div><span>${prog}%</span></div></td>
       <td><span class="badge badge-${statusBadgeClass}">${computedStatus}</span></td>
       <td>
         <button class="btn btn-sm" onclick="navigate('project_detail','${p.id}')">Mở</button>
@@ -1850,10 +1895,6 @@ function openProjectForm(id) {
         <label class="form-label">Giá trị hợp đồng (đ)</label>
         <input type="number" class="form-input" id="f-contractValue" value="${p.contractValue||''}" placeholder="0" />
       </div>
-      <div class="form-group">
-        <label class="form-label">Đã thanh toán đến nay (đ)</label>
-        <input type="number" class="form-input" id="f-paidAmount" value="${p.paidAmount||''}" placeholder="0" />
-      </div>
     </div>
 
     <div class="form-section-title">📅 5. Tiến độ thiết kế</div>
@@ -1928,7 +1969,6 @@ function submitProjectForm(id) {
     architectManagerPhone: document.getElementById('f-architectManagerPhone').value.trim(),
     contractNo: document.getElementById('f-contractNo').value.trim(),
     contractValue: document.getElementById('f-contractValue').value,
-    paidAmount: document.getElementById('f-paidAmount').value,
     contractDate: dmyToIso(document.getElementById('f-contractDate').value),
     designStart: dmyToIso(document.getElementById('f-designStart').value),
     designDeadline: dmyToIso(document.getElementById('f-designDeadline').value),
@@ -2010,7 +2050,7 @@ function renderProjectDetail(content, actions, projectId) {
         <div style="text-align:right">
           <div class="text-xs text-muted">Tiến độ tổng thể</div>
           <div style="font-size:32px;font-weight:700;color:var(--primary)">${prog}%</div>
-          <div class="progress" style="width:200px"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div>
+          <div class="progress" style="width:200px"><div class="progress-bar" style="width:${prog}%;background:${progressBarColor(prog,p.status)}"></div></div>
         </div>
       </div>
       <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">🏢 Chủ đầu tư & địa điểm</h4>
@@ -2031,7 +2071,7 @@ function renderProjectDetail(content, actions, projectId) {
         <div class="info-item"><span class="info-label">Số HĐ</span><span class="info-value">${escapeHtml(p.contractNo||'—')}</span></div>
         <div class="info-item"><span class="info-label">Ngày ký HĐ</span><span class="info-value">${fmtDate(p.contractDate)}</span></div>
         <div class="info-item"><span class="info-label">Giá trị HĐ</span><span class="info-value large">${fmtMoney(p.contractValue)}</span></div>
-        <div class="info-item"><span class="info-label">Đã thanh toán</span><span class="info-value">${fmtMoney(p.paidAmount)}${(p.contractValue && p.paidAmount)?'<div class="payment-bar"><div class="payment-progress"><div class="payment-progress-bar" style="width:'+Math.min(100,Math.round((Number(p.paidAmount)/Number(p.contractValue))*100))+'%"></div></div><span class="text-xs">'+Math.round((Number(p.paidAmount)/Number(p.contractValue))*100)+'%</span></div>':''}</span></div>
+        <div class="info-item"><span class="info-label">Đã thanh toán</span><span class="info-value">${(()=>{const paid=computeProjectPaid(p);const cv=Number(p.contractValue);return fmtMoney(paid)+(cv&&paid?'<div class="payment-bar"><div class="payment-progress"><div class="payment-progress-bar" style="width:'+Math.min(100,Math.round(paid/cv*100))+'%"></div></div><span class="text-xs">'+Math.round(paid/cv*100)+'%</span></div>':'');})()}</span></div>
       </div>
 
       <h4 style="margin:14px 0 8px;color:var(--gray-700);font-size:13px;text-transform:uppercase;letter-spacing:0.5px">📅 Tiến độ thiết kế</h4>
@@ -2098,7 +2138,7 @@ function renderProjectDetail(content, actions, projectId) {
         <td>${emp ? escapeHtml(emp.fullName) : '<span class="text-muted">Chưa giao</span>'}</td>
         <td>${fmtDate(t.startDate)}</td>
         <td>${deadlineDisplay(t.deadline)}</td>
-        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${t.progress||0}%"></div></div><span class="text-sm">${t.progress||0}%</span></div></td>
+        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar" style="width:${t.progress||0}%;background:${t.progress>=100||t.status==='Hoàn thành'?'var(--success)':t.progress>0?'var(--primary)':'var(--gray-300)'}"></div></div><span class="text-sm">${t.progress||0}%</span></div></td>
         <td><span class="badge badge-${taskStatusClass}">${t.status}</span></td>
         <td>${badgeForLevel(lvl)}</td>
         <td>
@@ -2112,12 +2152,194 @@ function renderProjectDetail(content, actions, projectId) {
   }
   html += `</div>`;
 
+  // ── Thanh toán thiết kế ──
+  const payments = p.payments || [];
+  const totalPaid = computeProjectPaid(p);
+  const cv = Number(p.contractValue) || 0;
+
+  html += `<div class="card">
+    <div class="card-header">
+      <h3 class="card-title">💰 Thanh toán thiết kế (${payments.length})</h3>
+      <button class="btn btn-primary btn-sm lead-only" onclick="openPaymentForm('${p.id}')">+ Thêm thanh toán</button>
+    </div>`;
+
+  if (payments.length === 0) {
+    html += `<div class="empty-state">
+      <div class="empty-state-icon">💳</div>
+      <p>Chưa có đợt thanh toán nào.</p>
+      <button class="btn btn-primary mt-2 lead-only" onclick="openPaymentForm('${p.id}')">+ Thêm đợt đầu tiên</button>
+    </div>`;
+  } else {
+    html += `<div class="table-wrap"><table class="data-table">
+      <thead><tr>
+        <th style="width:40px">STT</th>
+        <th>Nội dung thanh toán</th>
+        <th>Người thực hiện</th>
+        <th>Tiến độ</th>
+        <th>Trạng thái</th>
+        <th>Số tiền</th>
+        <th></th>
+      </tr></thead><tbody>`;
+    payments.forEach((pm, idx) => {
+      const emp = state.employees.find(e => e.id === pm.assigneeId);
+      const stClass = pm.status === 'Đã hoàn thành' ? 'success'
+        : pm.status === 'Đang chờ duyệt' ? 'info' : 'progress';
+      html += `<tr>
+        <td class="center">${idx+1}</td>
+        <td><strong>${escapeHtml(pm.name||'')}</strong></td>
+        <td>${emp ? escapeHtml(emp.fullName) : '<span class="text-muted">—</span>'}</td>
+        <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar" style="width:${pm.progress||0}%;background:${progressBarColor(pm.progress||0,pm.status==='Đã hoàn thành'?'Hoàn thành':'')}"></div></div><span class="text-sm">${pm.progress||0}%</span></div></td>
+        <td><span class="badge badge-${stClass}">${pm.status||'—'}</span></td>
+        <td class="num"><strong>${fmtMoney(pm.amount)}</strong></td>
+        <td>
+          <button class="btn btn-sm lead-only" onclick="openPaymentForm('${p.id}','${pm.id}')">Sửa</button>
+          <button class="btn btn-sm btn-danger lead-only" onclick="deletePayment('${p.id}','${pm.id}')">×</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 0 0;border-top:1px solid var(--gray-200);margin-top:8px">
+      <span class="text-sm text-muted">Tổng đã thanh toán (hoàn thành):</span>
+      <span style="font-size:18px;font-weight:700;color:var(--success)">${fmtMoney(totalPaid)}</span>
+      ${cv ? `<span class="text-sm text-muted">/ ${fmtMoney(cv)} (${Math.round(Math.min(100,totalPaid/cv*100))}%)</span>` : ''}
+    </div>`;
+  }
+  html += `</div>`;
+
   content.innerHTML = html;
 }
 
 /* ============================================================
-   TASK FORM
+   TASK & PAYMENT TWO-WAY SYNC HELPERS
    ============================================================ */
+function onTaskStatusChange(val) {
+  if (val === 'Hoàn thành') {
+    document.getElementById('t-progress').value = 100;
+    const fp = document.getElementById('t-completedDate')._flatpickr;
+    if (fp) fp.setDate(new Date());
+    else document.getElementById('t-completedDate').value = isoToDmy(new Date().toISOString().slice(0,10));
+  }
+}
+function onTaskProgressInput(val) {
+  const n = parseInt(val);
+  if (n === 100) {
+    const sel = document.getElementById('t-status');
+    if (sel) sel.value = 'Hoàn thành';
+    const fp = document.getElementById('t-completedDate')._flatpickr;
+    if (fp) fp.setDate(new Date());
+    else document.getElementById('t-completedDate').value = isoToDmy(new Date().toISOString().slice(0,10));
+  } else if (n < 100) {
+    const sel = document.getElementById('t-status');
+    if (sel && sel.value === 'Hoàn thành') sel.value = 'Đang thực hiện';
+  }
+}
+function onPaymentStatusChange(val) {
+  if (val === 'Đã hoàn thành') {
+    document.getElementById('pm-progress').value = 100;
+  } else {
+    const p = parseInt(document.getElementById('pm-progress').value);
+    if (p === 100) document.getElementById('pm-progress').value = 0;
+  }
+}
+function onPaymentProgressInput(val) {
+  const n = parseInt(val);
+  const sel = document.getElementById('pm-status');
+  if (!sel) return;
+  if (n === 100) sel.value = 'Đã hoàn thành';
+  else if (n < 100 && sel.value === 'Đã hoàn thành') sel.value = 'Đang thực hiện';
+}
+
+/* ============================================================
+   PAYMENT FORM
+   ============================================================ */
+const PAYMENT_STATUS = ['Đang thực hiện','Đang chờ duyệt','Đã hoàn thành'];
+
+function openPaymentForm(projectId, paymentId) {
+  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  const isEdit = !!paymentId;
+  const pm = isEdit ? (project.payments||[]).find(x => x.id === paymentId) : {
+    id: uid('pm_'), name: '', assigneeId: '', amount: '', progress: 0, status: 'Đang thực hiện'
+  };
+  if (!pm) return;
+
+  const empOptions = state.employees.map(e =>
+    `<option value="${e.id}" ${e.id===pm.assigneeId?'selected':''}>${escapeHtml(e.fullName)}</option>`
+  ).join('');
+
+  const body = `
+    <div class="form-group">
+      <label class="form-label required">Nội dung thanh toán</label>
+      <input class="form-input" id="pm-name" value="${escapeHtml(pm.name||'')}" placeholder="VD: Đợt 1 - Hồ sơ thiết kế cơ sở" />
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Người thực hiện</label>
+        <select class="form-select" id="pm-assignee">
+          <option value="">-- Chọn nhân viên --</option>
+          ${empOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số tiền (đ)</label>
+        <input type="number" class="form-input" id="pm-amount" value="${pm.amount||''}" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="pm-status" onchange="onPaymentStatusChange(this.value)">
+          ${PAYMENT_STATUS.map(s => `<option value="${s}" ${s===pm.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiến độ (%)</label>
+        <input type="number" class="form-input" id="pm-progress" min="0" max="100" value="${pm.progress||0}" placeholder="0" oninput="onPaymentProgressInput(this.value)" />
+      </div>
+    </div>`;
+
+  showModal(isEdit ? 'Sửa thanh toán' : 'Thêm đợt thanh toán', body, [
+    { label: 'Hủy', onclick: 'closeModal()' },
+    { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitPaymentForm('${projectId}','${isEdit ? pm.id : ''}')` }
+  ], { locked: true });
+}
+
+function submitPaymentForm(projectId, paymentId) {
+  const name = document.getElementById('pm-name').value.trim();
+  if (!name) { toast('Vui lòng nhập nội dung thanh toán', 'error'); return; }
+
+  const project = state.projects.find(x => x.id === projectId);
+  if (!project) return;
+  if (!project.payments) project.payments = [];
+
+  const data = {
+    id: paymentId || uid('pm_'),
+    name,
+    assigneeId: document.getElementById('pm-assignee').value,
+    amount: Number(document.getElementById('pm-amount').value) || 0,
+    status: document.getElementById('pm-status').value,
+    progress: Math.min(100, Math.max(0, parseInt(document.getElementById('pm-progress').value)||0)),
+  };
+
+  const idx = project.payments.findIndex(x => x.id === paymentId);
+  if (idx >= 0) project.payments[idx] = data;
+  else project.payments.push(data);
+
+  closeModal();
+  saveState();
+  toast(paymentId ? 'Đã cập nhật thanh toán' : 'Đã thêm đợt thanh toán', 'success');
+  navigate('project_detail', projectId);
+}
+
+function deletePayment(projectId, paymentId) {
+  showConfirm('Xóa đợt thanh toán này?', () => {
+    const project = state.projects.find(x => x.id === projectId);
+    if (!project) return;
+    project.payments = (project.payments||[]).filter(x => x.id !== paymentId);
+    saveState();
+    toast('Đã xóa', 'success');
+    navigate('project_detail', projectId);
+  });
+}
 function openTaskForm(projectId, taskId) {
   if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
   const project = state.projects.find(x => x.id === projectId);
@@ -2150,7 +2372,7 @@ function openTaskForm(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Trạng thái</label>
-        <select class="form-select" id="t-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('t-progress').value=100; const fp=document.getElementById('t-completedDate')._flatpickr; if(fp)fp.setDate(new Date()); else document.getElementById('t-completedDate').value=isoToDmy(new Date().toISOString().slice(0,10));}">
+        <select class="form-select" id="t-status" onchange="onTaskStatusChange(this.value)">
           ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
@@ -2164,7 +2386,7 @@ function openTaskForm(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Tiến độ %</label>
-        <input type="number" min="0" max="100" class="form-input" id="t-progress" value="${t.progress||0}" />
+        <input type="number" min="0" max="100" class="form-input" id="t-progress" value="${t.progress||0}" oninput="onTaskProgressInput(this.value)" />
       </div>
       <div class="form-group">
         <label class="form-label">Ngày hoàn thành thực tế</label>
@@ -2465,13 +2687,14 @@ function renderReports(content, actions) {
   const totalCV = projects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
   const completedProjects = projects.filter(p => p.status === 'Hoàn thành');
   const completedCV = completedProjects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
+  const totalPaidCV = projects.reduce((s,p) => s + computeProjectPaid(p), 0);
   const completedTasks = allTasks.filter(t => t.status === 'Hoàn thành').length;
   const totalTasks = allTasks.length;
   const overdueTasks = allTasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0);
 
   let html = `<div class="stat-grid">
     <div class="stat-card"><div class="stat-label">Tổng GT HĐ</div><div class="stat-value">${fmtMoney(totalCV)}</div></div>
-    <div class="stat-card success"><div class="stat-label">GT HĐ đã hoàn thành</div><div class="stat-value">${fmtMoney(completedCV)}</div><div class="stat-sub">${completedProjects.length}/${projects.length} dự án</div></div>
+    <div class="stat-card success"><div class="stat-label">GT HĐ đã thanh toán</div><div class="stat-value">${fmtMoney(totalPaidCV)}</div><div class="stat-sub">${completedProjects.length}/${projects.length} dự án hoàn thành</div></div>
     <div class="stat-card"><div class="stat-label">Nhiệm vụ hoàn thành</div><div class="stat-value">${completedTasks}/${totalTasks}</div><div class="stat-sub">${totalTasks?Math.round(completedTasks/totalTasks*100):0}% hoàn thành</div></div>
     <div class="stat-card danger"><div class="stat-label">Nhiệm vụ trễ hạn</div><div class="stat-value">${overdueTasks.length}</div></div>
   </div>`;
@@ -2513,7 +2736,7 @@ function renderReports(content, actions) {
     </div>
     <div class="table-wrap"><table class="data-table">
       <thead><tr>
-        <th>Mã DA</th><th>Tên dự án</th><th>CĐT</th><th>GT HĐ</th>
+        <th>Mã DA</th><th>Tên dự án</th><th>CĐT</th><th>GT HĐ</th><th>GT đã TT</th>
         <th>Hạn TK</th><th>Tiến độ</th><th>NV/Tổng</th><th>Trạng thái</th>
       </tr></thead><tbody>`;
   projects.forEach(p => {
@@ -2528,8 +2751,9 @@ function renderReports(content, actions) {
       <td><strong>${escapeHtml(p.name)}</strong></td>
       <td>${escapeHtml(p.investor||'—')}</td>
       <td class="num">${fmtMoney(p.contractValue)}</td>
+      <td class="num" style="color:var(--success);font-weight:600">${fmtMoney(computeProjectPaid(p))}</td>
       <td>${fmtDate(p.designDeadline)}</td>
-      <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div>${prog}%</div></td>
+      <td><div class="flex items-center gap-2"><div class="progress" style="min-width:60px"><div class="progress-bar" style="width:${prog}%;background:${prog>=100?'var(--success)':prog>0?'var(--primary)':'var(--gray-300)'}"></div></div>${prog}%</div></td>
       <td class="center">${done}/${total}</td>
       <td><span class="badge badge-${stClass}">${compStatus}</span></td>
     </tr>`;
