@@ -1493,7 +1493,7 @@ function renderProjectList(content, actions) {
 
   html += `<div class="table-wrap"><table class="data-table">
     <thead><tr>
-      <th>Mã DA</th><th>Tên dự án</th><th>Chủ đầu tư</th><th>Địa điểm</th>
+      <th>Mã DA</th><th>Tên dự án</th><th>Giai đoạn</th><th>Chủ đầu tư</th><th>Địa điểm</th>
       <th>GT HĐ</th><th>Hạn hoàn thành TK</th><th>Hạn ND105</th>
       <th>Tiến độ</th><th>Trạng thái</th><th>Thao tác</th>
     </tr></thead><tbody>`;
@@ -1509,6 +1509,7 @@ function renderProjectList(content, actions) {
     html += `<tr class="${rowClassForLevel(lvl)}">
       <td><strong>${escapeHtml(p.code || '')}</strong></td>
       <td><a href="#" onclick="event.preventDefault(); navigate('project_detail','${p.id}')" style="color:var(--primary); text-decoration:none; font-weight:600">${escapeHtml(p.name)}</a></td>
+      <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
       <td>${escapeHtml(p.investor || '—')}</td>
       <td>${escapeHtml(p.location || '—')}</td>
       <td class="num">${fmtMoney(p.contractValue)}</td>
@@ -1568,6 +1569,7 @@ function openProjectForm(id) {
     appraisalFee: '',
     appraisalFeeDate: '',
     status: 'Đang triển khai',
+    projectPhase: '',
     notes: '',
     tasks: []
   };
@@ -1583,6 +1585,15 @@ function openProjectForm(id) {
         <label class="form-label">Trạng thái</label>
         <select class="form-select" id="f-status">
           ${PROJECT_STATUS.map(s => `<option value="${s}" ${s===p.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giai đoạn dự án</label>
+        <select class="form-select" id="f-projectPhase">
+          <option value="" ${!p.projectPhase?'selected':''}>-- Chọn giai đoạn --</option>
+          <option value="Thiết kế thi công" ${'Thiết kế thi công'===p.projectPhase?'selected':''}>Thiết kế thi công</option>
+          <option value="Thiết kế cơ sở" ${'Thiết kế cơ sở'===p.projectPhase?'selected':''}>Thiết kế cơ sở</option>
+          <option value="Báo cáo nghiên cứu khả thi" ${'Báo cáo nghiên cứu khả thi'===p.projectPhase?'selected':''}>Báo cáo nghiên cứu khả thi</option>
         </select>
       </div>
       <div class="form-group full">
@@ -1731,6 +1742,7 @@ function submitProjectForm(id) {
     appraisalFee: document.getElementById('f-appraisalFee').value,
     appraisalFeeDate: document.getElementById('f-appraisalFeeDate').value,
     status: document.getElementById('f-status').value,
+    projectPhase: document.getElementById('f-projectPhase').value,
     notes: document.getElementById('f-notes').value.trim()
   };
   if (!data.name) return toast('Vui lòng nhập tên dự án', 'error');
@@ -1792,7 +1804,10 @@ function renderProjectDetail(content, actions, projectId) {
         <div>
           <div class="text-xs text-muted">Mã DA: ${escapeHtml(p.code||'—')} · ${escapeHtml(p.contractNo||'—')}</div>
           <h2 style="margin:4px 0">${escapeHtml(p.name)}</h2>
-          <div><span class="badge badge-${statusBadgeClass}">${compStatus}</span></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="badge badge-${statusBadgeClass}">${compStatus}</span>
+            ${p.projectPhase ? `<span class="badge badge-progress">🏷️ ${escapeHtml(p.projectPhase)}</span>` : ''}
+          </div>
         </div>
         <div style="text-align:right">
           <div class="text-xs text-muted">Tiến độ tổng thể</div>
