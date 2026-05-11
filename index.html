@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Công ty AA - Quản lý Thiết kế PCCC</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
 <link rel="icon" href="data:image/svg+xml,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><circle cx='100' cy='100' r='90' fill='%23fff' stroke='%23C8A540' stroke-width='7'/><path d='M 100 32 L 64 168 M 100 32 L 136 168' stroke='%231E40AF' stroke-width='12' fill='none' stroke-linecap='butt'/><path d='M 100 73 L 80 162 M 100 73 L 120 162' stroke='%23C8A540' stroke-width='9' fill='none' stroke-linecap='butt'/><path d='M 45 118 Q 100 100 155 116' stroke='%23DC2626' stroke-width='8' fill='none' stroke-linecap='round'/></svg>">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -739,7 +740,7 @@ function openMyTaskUpdate(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Trạng thái</label>
-        <select class="form-select" id="mt-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('mt-progress').value=100;document.getElementById('mt-completedDate').value=new Date().toISOString().slice(0,10);}">
+        <select class="form-select" id="mt-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('mt-progress').value=100; const fp=document.getElementById('mt-completedDate')._flatpickr; if(fp)fp.setDate(new Date()); else document.getElementById('mt-completedDate').value=isoToDmy(new Date().toISOString().slice(0,10));}">
           ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
@@ -749,7 +750,7 @@ function openMyTaskUpdate(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Ngày hoàn thành thực tế</label>
-        <input type="date" class="form-input" id="mt-completedDate" value="${t.completedDate||''}" />
+        <input type="text" class="form-input datepicker" id="mt-completedDate" value="${isoToDmy(t.completedDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group full">
         <label class="form-label">Ghi chú (tiến độ, vướng mắc, lý do trễ...)</label>
@@ -764,7 +765,7 @@ function openMyTaskUpdate(projectId, taskId) {
   showModal('📝 Cập nhật tiến độ nhiệm vụ của tôi', body, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: 'Lưu cập nhật', class: 'btn-primary', onclick: `submitMyTaskUpdate('${projectId}','${taskId}')` }
-  ]);
+  ], { locked: true });
 }
 
 function submitMyTaskUpdate(projectId, taskId) {
@@ -781,7 +782,7 @@ function submitMyTaskUpdate(projectId, taskId) {
   // Update only the allowed fields - never touch name, assignee, dates
   t.status = document.getElementById('mt-status').value;
   t.progress = newProgress;
-  t.completedDate = document.getElementById('mt-completedDate').value;
+  t.completedDate = dmyToIso(document.getElementById('mt-completedDate').value);
   t.notes = document.getElementById('mt-notes').value.trim();
   t.updatedAt = new Date().toISOString();
   t.updatedBy = currentUserName;
@@ -1049,6 +1050,34 @@ function toast(msg, type = 'info', duration = 3000) {
   setTimeout(() => t.remove(), duration);
 }
 
+/* ---- Date helpers ---- */
+// yyyy-mm-dd → dd/mm/yyyy (for display in input)
+function isoToDmy(iso) {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+// dd/mm/yyyy → yyyy-mm-dd (for saving to state)
+function dmyToIso(dmy) {
+  if (!dmy) return '';
+  const m = dmy.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return dmy;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+// Init flatpickr on all .datepicker inputs inside a container
+function initDatePickers(container) {
+  const inputs = (container || document).querySelectorAll('input.datepicker');
+  inputs.forEach(el => {
+    if (el._flatpickr) el._flatpickr.destroy();
+    flatpickr(el, {
+      dateFormat: 'd/m/Y',
+      allowInput: true,
+      locale: 'vn',
+    });
+  });
+}
+
 /* ============================================================
    WARNING / STATUS LOGIC
    ============================================================ */
@@ -1149,6 +1178,8 @@ let currentProjectId = null;
 function navigate(view, projectId = null) {
   currentView = view;
   currentProjectId = projectId;
+  // Clean up project list event listener khi chuyển view
+  document.removeEventListener('click', onDocClickProjFilter);
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.view === view);
   });
@@ -1375,7 +1406,7 @@ function renderDashboard(content, actions) {
   } else {
     html += `<div class="table-wrap"><table class="data-table">
       <thead><tr>
-        <th>Mã DA</th><th>Tên dự án</th><th>Chủ đầu tư</th>
+        <th>Mã DA</th><th>Tên dự án</th><th>Giai đoạn</th><th>Chủ đầu tư</th>
         <th>Hạn hoàn thành TK</th><th>Tiến độ</th><th>Trạng thái</th><th></th>
       </tr></thead><tbody>`;
     upcoming.forEach(p => {
@@ -1384,6 +1415,7 @@ function renderDashboard(content, actions) {
       html += `<tr class="${rowClassForLevel(lvl)}">
         <td><strong>${escapeHtml(p.code || p.id)}</strong></td>
         <td>${escapeHtml(p.name)}</td>
+        <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
         <td>${escapeHtml(p.investor || '—')}</td>
         <td>${deadlineDisplay(p.designDeadline)}</td>
         <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
@@ -1455,48 +1487,149 @@ function renderDashboard(content, actions) {
 /* ============================================================
    PROJECT LIST
    ============================================================ */
-let projectFilter = { search: '', status: '' };
+let projectFilter = { search: '', phase: '', investor: '', status: '' };
+// dropdown state
+let _phaseDropOpen = false, _investorDropOpen = false, _statusDropOpen = false;
 
 function renderProjectList(content, actions) {
   actions.innerHTML = `<button class="btn btn-primary lead-only" onclick="openProjectForm()">+ Thêm dự án</button>`;
 
-  let html = `<div class="toolbar">
-    <div class="search-bar">
-      <input type="text" id="proj-search" placeholder="Tìm theo tên, CĐT, mã..." value="${escapeHtml(projectFilter.search)}" oninput="onProjFilter()" />
+  // Lần đầu: render toàn bộ khung (toolbar + bảng)
+  content.innerHTML = `
+    <style>
+      .col-filter-wrap { position:relative; display:inline-block; }
+      .col-filter-btn {
+        background:none; border:none; cursor:pointer; padding:0 4px; font-size:13px;
+        color:var(--gray-400); vertical-align:middle; line-height:1;
+      }
+      .col-filter-btn.active { color:var(--primary); }
+      .col-filter-dropdown {
+        position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%);
+        background:#fff; border:1px solid var(--gray-200); border-radius:8px;
+        box-shadow:var(--shadow-lg); z-index:200; min-width:180px; max-height:260px;
+        overflow-y:auto; padding:6px 0;
+      }
+      .col-filter-dropdown .cfd-search {
+        padding:6px 10px; border-bottom:1px solid var(--gray-100);
+      }
+      .col-filter-dropdown .cfd-search input {
+        width:100%; padding:5px 8px; border:1px solid var(--gray-300);
+        border-radius:5px; font-size:12px;
+      }
+      .col-filter-item {
+        padding:6px 14px; font-size:13px; cursor:pointer; white-space:nowrap;
+        display:flex; align-items:center; gap:8px;
+      }
+      .col-filter-item:hover { background:var(--gray-50); }
+      .col-filter-item.selected { color:var(--primary); font-weight:600; }
+      .col-filter-item .cfi-check { width:14px; font-size:12px; }
+      .cfd-clear { padding:6px 14px; font-size:12px; color:var(--danger); cursor:pointer; border-top:1px solid var(--gray-100); margin-top:4px; }
+      .cfd-clear:hover { background:#fef2f2; }
+    </style>
+    <div class="toolbar" id="proj-toolbar">
+      <div class="search-bar">
+        <input type="text" id="proj-search" placeholder="Tìm theo tên, CĐT, mã..." value="${escapeHtml(projectFilter.search)}" oninput="onProjSearchInput()" />
+      </div>
+      <button class="btn btn-sm" onclick="clearProjFilters()" id="proj-clear-btn" style="display:none">✕ Xóa bộ lọc</button>
+      <div class="toolbar-spacer"></div>
+      <span class="text-sm text-muted" id="proj-count">Tổng: ${state.projects.length} dự án</span>
     </div>
-    <select class="form-select" id="proj-status" onchange="onProjFilter()">
-      <option value="">Tất cả trạng thái</option>
-      ${PROJECT_STATUS.concat(['Chậm tiến độ']).map(s => `<option value="${s}" ${s===projectFilter.status?'selected':''}>${s}</option>`).join('')}
-    </select>
-    <div class="toolbar-spacer"></div>
-    <span class="text-sm text-muted">Tổng: ${state.projects.length} dự án</span>
-  </div>`;
+    <div id="proj-table-wrap"></div>
+    <div class="legend mt-4">
+      <div class="legend-item"><div class="legend-dot" style="background:#fef9e7;border:1px solid #fcd34d"></div>Sắp hết hạn (cảnh báo)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn / chậm tiến độ</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border:1px solid #86efac"></div>Đã hoàn thành</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1px solid var(--gray-300)"></div>Đúng tiến độ</div>
+    </div>`;
 
+  renderProjTable();
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', onDocClickProjFilter);
+}
+
+function onDocClickProjFilter(e) {
+  if (!e.target.closest('.col-filter-wrap')) {
+    closeProjDropdowns();
+  }
+}
+
+function closeProjDropdowns() {
+  _phaseDropOpen = false; _investorDropOpen = false; _statusDropOpen = false;
+  ['cfd-phase','cfd-investor','cfd-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+}
+
+function renderProjTable() {
+  const wrap = document.getElementById('proj-table-wrap');
+  if (!wrap) return;
+
+  // Build filtered list
   let list = state.projects.slice();
-  if (projectFilter.search) {
-    const q = projectFilter.search.toLowerCase();
-    list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.investor||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.location||'').toLowerCase().includes(q));
-  }
-  if (projectFilter.status) {
-    list = list.filter(p => projectStatusComputed(p) === projectFilter.status);
-  }
+  const q = projectFilter.search.toLowerCase();
+  if (q) list = list.filter(p =>
+    (p.name||'').toLowerCase().includes(q) ||
+    (p.investor||'').toLowerCase().includes(q) ||
+    (p.code||'').toLowerCase().includes(q)
+  );
+  if (projectFilter.phase)    list = list.filter(p => (p.projectPhase||'') === projectFilter.phase);
+  if (projectFilter.investor) list = list.filter(p => (p.investor||'') === projectFilter.investor);
+  if (projectFilter.status)   list = list.filter(p => projectStatusComputed(p) === projectFilter.status);
+
+  // Update count & clear btn
+  const countEl = document.getElementById('proj-count');
+  if (countEl) countEl.textContent = `Hiển thị: ${list.length} / ${state.projects.length} dự án`;
+  const clearBtn = document.getElementById('proj-clear-btn');
+  const hasFilter = projectFilter.search || projectFilter.phase || projectFilter.investor || projectFilter.status;
+  if (clearBtn) clearBtn.style.display = hasFilter ? '' : 'none';
+
+  // Unique values for dropdowns
+  const phases    = [...new Set(state.projects.map(p => p.projectPhase||'').filter(Boolean))].sort();
+  const investors = [...new Set(state.projects.map(p => p.investor||'').filter(Boolean))].sort();
+  const statuses  = [...new Set(state.projects.map(p => projectStatusComputed(p)))].sort();
+
+  const phaseActive    = projectFilter.phase    ? ' active' : '';
+  const investorActive = projectFilter.investor ? ' active' : '';
+  const statusActive   = projectFilter.status   ? ' active' : '';
 
   if (list.length === 0) {
-    html += `<div class="card"><div class="empty-state">
+    wrap.innerHTML = `<div class="card"><div class="empty-state">
       <div class="empty-state-icon">🏗️</div>
       <p>${state.projects.length === 0 ? 'Chưa có dự án nào.' : 'Không tìm thấy dự án phù hợp.'}</p>
       ${state.projects.length === 0 ? '<button class="btn btn-primary mt-2 lead-only" onclick="openProjectForm()">+ Tạo dự án mới</button>' : ''}
     </div></div>`;
-    content.innerHTML = html;
     return;
   }
 
-  html += `<div class="table-wrap"><table class="data-table">
+  let html = `<div class="table-wrap"><table class="data-table">
     <thead><tr>
-      <th>Mã DA</th><th>Tên dự án</th><th>Giai đoạn</th><th>Chủ đầu tư</th><th>Địa điểm</th>
-      <th>GT HĐ</th><th>Hạn hoàn thành TK</th><th>Hạn ND105</th>
-      <th>Tiến độ</th><th>Trạng thái</th><th>Thao tác</th>
+      <th>Mã DA</th>
+      <th>Tên dự án</th>
+      <th>
+        Giai đoạn
+        <div class="col-filter-wrap">
+          <button class="col-filter-btn${phaseActive}" onclick="toggleProjDropdown('phase',event)" title="Lọc theo giai đoạn">▼</button>
+        </div>
+      </th>
+      <th>
+        Chủ đầu tư
+        <div class="col-filter-wrap">
+          <button class="col-filter-btn${investorActive}" onclick="toggleProjDropdown('investor',event)" title="Lọc theo CĐT">▼</button>
+        </div>
+      </th>
+      <th>Hạn hoàn thành TK</th>
+      <th>Tiến độ</th>
+      <th>
+        Trạng thái
+        <div class="col-filter-wrap">
+          <button class="col-filter-btn${statusActive}" onclick="toggleProjDropdown('status',event)" title="Lọc theo trạng thái">▼</button>
+        </div>
+      </th>
+      <th>Thao tác</th>
     </tr></thead><tbody>`;
+
   list.forEach(p => {
     const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
     const prog = computeProjectProgress(p);
@@ -1504,17 +1637,13 @@ function renderProjectList(content, actions) {
     const statusBadgeClass = computedStatus === 'Hoàn thành' ? 'success'
       : computedStatus === 'Chậm tiến độ' ? 'danger'
       : computedStatus === 'Tạm dừng' ? 'warning'
-      : computedStatus === 'Hủy' ? 'default'
-      : 'info';
+      : computedStatus === 'Hủy' ? 'default' : 'info';
     html += `<tr class="${rowClassForLevel(lvl)}">
       <td><strong>${escapeHtml(p.code || '')}</strong></td>
       <td><a href="#" onclick="event.preventDefault(); navigate('project_detail','${p.id}')" style="color:var(--primary); text-decoration:none; font-weight:600">${escapeHtml(p.name)}</a></td>
       <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
       <td>${escapeHtml(p.investor || '—')}</td>
-      <td>${escapeHtml(p.location || '—')}</td>
-      <td class="num">${fmtMoney(p.contractValue)}</td>
       <td>${deadlineDisplay(p.designDeadline)}</td>
-      <td>${deadlineDisplay(p.pccc105Deadline)}</td>
       <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar ${lvl}" style="width:${prog}%"></div></div><span>${prog}%</span></div></td>
       <td><span class="badge badge-${statusBadgeClass}">${computedStatus}</span></td>
       <td>
@@ -1525,20 +1654,89 @@ function renderProjectList(content, actions) {
     </tr>`;
   });
   html += `</tbody></table></div>`;
-
-  html += `<div class="legend mt-4">
-    <div class="legend-item"><div class="legend-dot" style="background:#fef9e7;border:1px solid #fcd34d"></div>Sắp hết hạn (cảnh báo)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5"></div>Quá hạn / chậm tiến độ</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border:1px solid #86efac"></div>Đã hoàn thành</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1px solid var(--gray-300)"></div>Đúng tiến độ</div>
-  </div>`;
-
-  content.innerHTML = html;
+  wrap.innerHTML = html;
 }
-function onProjFilter() {
+
+function onProjSearchInput() {
   projectFilter.search = document.getElementById('proj-search').value;
-  projectFilter.status = document.getElementById('proj-status').value;
-  renderProjectList(document.getElementById('content'), document.getElementById('topbar-actions'));
+  renderProjTable();
+}
+
+function toggleProjDropdown(col, e) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  const wrap = btn.closest('.col-filter-wrap');
+
+  // Close other dropdowns
+  ['phase','investor','status'].forEach(c => {
+    if (c !== col) {
+      const el = document.getElementById('cfd-' + c);
+      if (el) el.remove();
+    }
+  });
+
+  const existing = document.getElementById('cfd-' + col);
+  if (existing) { existing.remove(); return; }
+
+  // Build options
+  let options;
+  if (col === 'phase') {
+    options = [...new Set(state.projects.map(p => p.projectPhase||'').filter(Boolean))].sort();
+  } else if (col === 'investor') {
+    options = [...new Set(state.projects.map(p => p.investor||'').filter(Boolean))].sort();
+  } else {
+    options = [...new Set(state.projects.map(p => projectStatusComputed(p)))].sort();
+  }
+
+  const cur = projectFilter[col];
+  const needSearch = options.length > 6;
+
+  const div = document.createElement('div');
+  div.className = 'col-filter-dropdown';
+  div.id = 'cfd-' + col;
+
+  let inner = '';
+  if (needSearch) inner += `<div class="cfd-search"><input type="text" placeholder="Tìm..." oninput="filterDropdownItems('${col}',this.value)" id="cfd-search-${col}" /></div>`;
+  inner += `<div id="cfd-items-${col}">`;
+  options.forEach(opt => {
+    const sel = opt === cur ? ' selected' : '';
+    inner += `<div class="col-filter-item${sel}" onclick="setProjFilter('${col}','${escapeHtml(opt)}')">
+      <span class="cfi-check">${opt === cur ? '✓' : ''}</span>${escapeHtml(opt)}
+    </div>`;
+  });
+  inner += `</div>`;
+  if (cur) inner += `<div class="cfd-clear" onclick="setProjFilter('${col}','')">✕ Bỏ lọc</div>`;
+  div.innerHTML = inner;
+  wrap.appendChild(div);
+
+  if (needSearch) setTimeout(() => { const si = document.getElementById('cfd-search-' + col); if(si) si.focus(); }, 0);
+}
+
+function filterDropdownItems(col, q) {
+  const container = document.getElementById('cfd-items-' + col);
+  if (!container) return;
+  const lq = q.toLowerCase();
+  container.querySelectorAll('.col-filter-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(lq) ? '' : 'none';
+  });
+}
+
+function setProjFilter(col, val) {
+  projectFilter[col] = val;
+  closeProjDropdowns();
+  renderProjTable();
+}
+
+function clearProjFilters() {
+  projectFilter = { search: '', phase: '', investor: '', status: '' };
+  const searchEl = document.getElementById('proj-search');
+  if (searchEl) searchEl.value = '';
+  renderProjTable();
+}
+
+function onProjFilter() {
+  // legacy – kept for safety
+  onProjSearchInput();
 }
 
 function openProjectForm(id) {
@@ -1646,7 +1844,7 @@ function openProjectForm(id) {
       </div>
       <div class="form-group">
         <label class="form-label">Ngày ký hợp đồng</label>
-        <input type="date" class="form-input" id="f-contractDate" value="${p.contractDate||''}" />
+        <input type="text" class="form-input datepicker" id="f-contractDate" value="${isoToDmy(p.contractDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label">Giá trị hợp đồng (đ)</label>
@@ -1662,11 +1860,11 @@ function openProjectForm(id) {
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Ngày bắt đầu thiết kế</label>
-        <input type="date" class="form-input" id="f-designStart" value="${p.designStart||''}" />
+        <input type="text" class="form-input datepicker" id="f-designStart" value="${isoToDmy(p.designStart||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label required">Hạn hoàn thành thiết kế</label>
-        <input type="date" class="form-input" id="f-designDeadline" value="${p.designDeadline||''}" />
+        <input type="text" class="form-input datepicker" id="f-designDeadline" value="${isoToDmy(p.designDeadline||'')}" placeholder="dd/mm/yyyy" />
       </div>
     </div>
 
@@ -1678,11 +1876,11 @@ function openProjectForm(id) {
       </div>
       <div class="form-group">
         <label class="form-label">Ngày nộp hồ sơ thẩm duyệt</label>
-        <input type="date" class="form-input" id="f-pccc105SubmitDate" value="${p.pccc105SubmitDate||''}" />
+        <input type="text" class="form-input datepicker" id="f-pccc105SubmitDate" value="${isoToDmy(p.pccc105SubmitDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label">Hạn hoàn thành thẩm duyệt</label>
-        <input type="date" class="form-input" id="f-pccc105Deadline" value="${p.pccc105Deadline||''}" />
+        <input type="text" class="form-input datepicker" id="f-pccc105Deadline" value="${isoToDmy(p.pccc105Deadline||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label">Cán bộ PC07 phụ trách (tên)</label>
@@ -1698,7 +1896,7 @@ function openProjectForm(id) {
       </div>
       <div class="form-group">
         <label class="form-label">Ngày nộp phí thẩm định</label>
-        <input type="date" class="form-input" id="f-appraisalFeeDate" value="${p.appraisalFeeDate||''}" />
+        <input type="text" class="form-input datepicker" id="f-appraisalFeeDate" value="${isoToDmy(p.appraisalFeeDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
     </div>
 
@@ -1713,7 +1911,7 @@ function openProjectForm(id) {
   showModal(isEdit ? 'Sửa dự án' : 'Thêm dự án mới', body, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: isEdit ? 'Cập nhật' : 'Tạo dự án', class: 'btn-primary', onclick: `submitProjectForm(${isEdit ? `'${id}'` : 'null'})` }
-  ]);
+  ], { locked: true });
 }
 
 function submitProjectForm(id) {
@@ -1731,16 +1929,16 @@ function submitProjectForm(id) {
     contractNo: document.getElementById('f-contractNo').value.trim(),
     contractValue: document.getElementById('f-contractValue').value,
     paidAmount: document.getElementById('f-paidAmount').value,
-    contractDate: document.getElementById('f-contractDate').value,
-    designStart: document.getElementById('f-designStart').value,
-    designDeadline: document.getElementById('f-designDeadline').value,
+    contractDate: dmyToIso(document.getElementById('f-contractDate').value),
+    designStart: dmyToIso(document.getElementById('f-designStart').value),
+    designDeadline: dmyToIso(document.getElementById('f-designDeadline').value),
     pccc105FileCode: document.getElementById('f-pccc105FileCode').value.trim(),
-    pccc105SubmitDate: document.getElementById('f-pccc105SubmitDate').value,
-    pccc105Deadline: document.getElementById('f-pccc105Deadline').value,
+    pccc105SubmitDate: dmyToIso(document.getElementById('f-pccc105SubmitDate').value),
+    pccc105Deadline: dmyToIso(document.getElementById('f-pccc105Deadline').value),
     pc07OfficerName: document.getElementById('f-pc07OfficerName').value.trim(),
     pc07OfficerPhone: document.getElementById('f-pc07OfficerPhone').value.trim(),
     appraisalFee: document.getElementById('f-appraisalFee').value,
-    appraisalFeeDate: document.getElementById('f-appraisalFeeDate').value,
+    appraisalFeeDate: dmyToIso(document.getElementById('f-appraisalFeeDate').value),
     status: document.getElementById('f-status').value,
     projectPhase: document.getElementById('f-projectPhase').value,
     notes: document.getElementById('f-notes').value.trim()
@@ -1952,17 +2150,17 @@ function openTaskForm(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Trạng thái</label>
-        <select class="form-select" id="t-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('t-progress').value=100;document.getElementById('t-completedDate').value=new Date().toISOString().slice(0,10);}">
+        <select class="form-select" id="t-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('t-progress').value=100; const fp=document.getElementById('t-completedDate')._flatpickr; if(fp)fp.setDate(new Date()); else document.getElementById('t-completedDate').value=isoToDmy(new Date().toISOString().slice(0,10));}">
           ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Ngày bắt đầu</label>
-        <input type="date" class="form-input" id="t-startDate" value="${t.startDate||''}" />
+        <input type="text" class="form-input datepicker" id="t-startDate" value="${isoToDmy(t.startDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label required">Hạn hoàn thành</label>
-        <input type="date" class="form-input" id="t-deadline" value="${t.deadline||''}" />
+        <input type="text" class="form-input datepicker" id="t-deadline" value="${isoToDmy(t.deadline||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group">
         <label class="form-label">Tiến độ %</label>
@@ -1970,7 +2168,7 @@ function openTaskForm(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Ngày hoàn thành thực tế</label>
-        <input type="date" class="form-input" id="t-completedDate" value="${t.completedDate||''}" />
+        <input type="text" class="form-input datepicker" id="t-completedDate" value="${isoToDmy(t.completedDate||'')}" placeholder="dd/mm/yyyy" />
       </div>
       <div class="form-group full">
         <label class="form-label">Ghi chú</label>
@@ -1981,7 +2179,7 @@ function openTaskForm(projectId, taskId) {
   showModal(isEdit ? 'Sửa nhiệm vụ' : 'Thêm nhiệm vụ thiết kế', body, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitTaskForm('${projectId}', ${isEdit ? `'${taskId}'` : 'null'})` }
-  ]);
+  ], { locked: true });
 }
 
 function submitTaskForm(projectId, taskId) {
@@ -1990,10 +2188,10 @@ function submitTaskForm(projectId, taskId) {
   const data = {
     name: document.getElementById('t-name').value.trim(),
     assigneeId: document.getElementById('t-assigneeId').value,
-    startDate: document.getElementById('t-startDate').value,
-    deadline: document.getElementById('t-deadline').value,
+    startDate: dmyToIso(document.getElementById('t-startDate').value),
+    deadline: dmyToIso(document.getElementById('t-deadline').value),
     progress: parseInt(document.getElementById('t-progress').value) || 0,
-    completedDate: document.getElementById('t-completedDate').value,
+    completedDate: dmyToIso(document.getElementById('t-completedDate').value),
     status: document.getElementById('t-status').value,
     notes: document.getElementById('t-notes').value.trim()
   };
@@ -2183,7 +2381,7 @@ function openEmployeeForm(id) {
   showModal(isEdit ? 'Sửa nhân viên' : 'Thêm nhân viên', body, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: isEdit ? 'Cập nhật' : 'Thêm', class: 'btn-primary', onclick: `submitEmployeeForm(${isEdit ? `'${id}'` : 'null'})` }
-  ]);
+  ], { locked: true });
 }
 
 function submitEmployeeForm(id) {
@@ -2437,7 +2635,7 @@ function renderConfig(content, actions) {
       <button class="btn lead-only" onclick="document.getElementById('import-file').click()">📤 Khôi phục từ file</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
       <button class="btn btn-warning lead-only" onclick="loadSampleData()">🎲 Tải dữ liệu mẫu</button>
-      <button class="btn btn-warning lead-only" onclick="resetAdminPin()">🔑 Reset mật khẩu Quản lý</button>
+      <button class="btn btn-warning lead-only" onclick="resetAdminPin()" style="display:none">🔑 Reset mật khẩu Quản lý</button>
       <button class="btn btn-danger lead-only" onclick="resetAllData()">🗑️ Xóa toàn bộ dữ liệu</button>
     </div>
   </div>`;
@@ -2636,6 +2834,8 @@ function loadSampleData() {
 /* ============================================================
    MODAL HELPERS
    ============================================================ */
+let _modalLocked = false; // true = có form đang mở, không cho đóng bằng click ngoài / Escape
+
 function showModal(title, body, buttons, options = {}) {
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = body;
@@ -2643,9 +2843,17 @@ function showModal(title, body, buttons, options = {}) {
   footer.innerHTML = (buttons||[]).map(b => `<button class="btn ${b.class||''}" onclick="${b.onclick}">${b.label}</button>`).join('');
   document.getElementById('modal').classList.toggle('modal-lg', !!options.large);
   document.getElementById('modal-overlay').classList.remove('hidden');
+  // Lock modal nếu có form (không phải confirm)
+  _modalLocked = !!options.locked;
+  // Ẩn nút X khi modal bị lock (phải bấm Hủy hoặc Cập nhật)
+  const closeBtn = document.querySelector('.modal-close');
+  if (closeBtn) closeBtn.style.display = _modalLocked ? 'none' : '';
+  // Init date pickers after modal renders
+  setTimeout(() => initDatePickers(document.getElementById('modal-body')), 0);
 }
 
 function closeModal() {
+  _modalLocked = false;
   document.getElementById('modal-overlay').classList.add('hidden');
 }
 
@@ -2654,7 +2862,7 @@ function showConfirm(message, onConfirm) {
   showModal('Xác nhận', `<div class="confirm-msg">${message}</div>`, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: 'Xác nhận', class: 'btn-danger', onclick: '(window._confirmCb||function(){})(); closeModal();' }
-  ]);
+  ], { locked: false });
 }
 
 
@@ -2665,10 +2873,10 @@ document.querySelectorAll('.nav-item').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.view));
 });
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
-  if (e.target.id === 'modal-overlay') closeModal();
+  if (e.target.id === 'modal-overlay' && !_modalLocked) closeModal();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape' && !_modalLocked) closeModal();
 });
 
 function setLoadingMsg(msg, pct) {
@@ -2685,6 +2893,10 @@ function hideLoading() {
 // Được gọi từ Firebase module script ở cuối file sau khi SDK sẵn sàng
 async function initApp() {
   console.log('🚀 initApp started, _fbRef:', !!_fbRef);
+
+  // Đặt mật khẩu admin mặc định (ghi đè mỗi lần load để đảm bảo đúng)
+  localStorage.setItem(ADMIN_PIN_KEY, '-4qbpua');
+
   loadState();
   loadRole();
   applyRoleUI();
@@ -2712,6 +2924,10 @@ async function initApp() {
 }
 
 </script>
+
+<!-- Flatpickr date picker -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/vn.js"></script>
 
 <!-- Firebase Compat SDK — không bị CORS, hỗ trợ realtime onValue -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
