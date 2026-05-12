@@ -740,13 +740,13 @@ function openMyTaskUpdate(projectId, taskId) {
       </div>
       <div class="form-group">
         <label class="form-label">Trạng thái</label>
-        <select class="form-select" id="mt-status" onchange="if(this.value==='Hoàn thành'){document.getElementById('mt-progress').value=100; const fp=document.getElementById('mt-completedDate')._flatpickr; if(fp)fp.setDate(new Date()); else document.getElementById('mt-completedDate').value=isoToDmy(new Date().toISOString().slice(0,10));}">
+        <select class="form-select" id="mt-status" onchange="onMtStatusChange(this.value)">
           ${TASK_STATUS.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Tiến độ %</label>
-        <input type="number" min="0" max="100" class="form-input" id="mt-progress" value="${t.progress||0}" />
+        <input type="number" min="0" max="100" class="form-input" id="mt-progress" value="${t.progress||0}" oninput="onMtProgressInput(this.value)" />
       </div>
       <div class="form-group">
         <label class="form-label">Ngày hoàn thành thực tế</label>
@@ -2265,6 +2265,27 @@ function renderProjectDetail(content, actions, projectId) {
 /* ============================================================
    TASK & PAYMENT TWO-WAY SYNC HELPERS
    ============================================================ */
+function onMtStatusChange(val) {
+  if (val === 'Hoàn thành') {
+    document.getElementById('mt-progress').value = 100;
+    const fp = document.getElementById('mt-completedDate')._flatpickr;
+    if (fp) fp.setDate(new Date());
+    else document.getElementById('mt-completedDate').value = isoToDmy(new Date().toISOString().slice(0,10));
+  }
+}
+function onMtProgressInput(val) {
+  const n = parseInt(val);
+  const sel = document.getElementById('mt-status');
+  if (!sel) return;
+  if (n === 100) {
+    sel.value = 'Hoàn thành';
+    const fp = document.getElementById('mt-completedDate')._flatpickr;
+    if (fp) fp.setDate(new Date());
+    else document.getElementById('mt-completedDate').value = isoToDmy(new Date().toISOString().slice(0,10));
+  } else if (n < 100 && sel.value === 'Hoàn thành') {
+    sel.value = 'Đang thực hiện';
+  }
+}
 function onTaskStatusChange(val) {
   if (val === 'Hoàn thành') {
     document.getElementById('t-progress').value = 100;
