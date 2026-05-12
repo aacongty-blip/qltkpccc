@@ -1169,9 +1169,11 @@ function computeProjectPaid(project) {
 }
 
 function computeAppraisalFee(project) {
-  return (project.appraisalReports || []).reduce((sum, r) => {
-    return sum + (Number(r.feeOfficer) || 0) + (Number(r.feeAgency) || 0);
-  }, 0);
+  return (project.appraisalReports || [])
+    .filter(r => r.status === 'Đã hoàn thành')
+    .reduce((sum, r) => {
+      return sum + (Number(r.feeOfficer) || 0) + (Number(r.feeAgency) || 0);
+    }, 0);
 }
 
 function projectStatusComputed(project) {
@@ -2196,7 +2198,7 @@ function renderProjectDetail(content, actions, projectId) {
     });
     html += `</tbody></table></div>
     <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 0 0;border-top:1px solid var(--gray-200);margin-top:8px">
-      <span class="text-sm text-muted">Tổng phí thẩm định:</span>
+      <span class="text-sm text-muted">Tổng phí thẩm định (hoàn thành):</span>
       <span style="font-size:18px;font-weight:700;color:var(--success)">${fmtMoney(totalAppraisalFee)}</span>
     </div>`;
   }
