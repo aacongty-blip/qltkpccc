@@ -391,9 +391,9 @@
           </div>
         </button>
         <button class="role-card" onclick="showDesignerLoginInline()">
-          <div class="role-card-icon">🧑‍🎨</div>
+          <div class="role-card-icon">🧑‍💼</div>
           <div class="role-card-content">
-            <div class="role-card-name">Thành viên Thiết kế</div>
+            <div class="role-card-name">Nhân viên</div>
             <div class="role-card-desc">Xem dự án + cập nhật tiến độ nhiệm vụ được giao. Cần tên + mật khẩu (do Quản lý cấp).</div>
           </div>
         </button>
@@ -406,7 +406,7 @@
     <!-- Designer login form (hidden by default, appears inline when clicking Thành viên TK) -->
     <div id="login-designer-section" style="display:none;margin-top:20px">
       <button type="button" class="btn" onclick="showRoleSelection()" style="margin-bottom:14px">← Quay lại chọn vai trò</button>
-      <h3 style="margin:0 0 12px;font-size:16px;color:var(--gray-900)">🧑‍🎨 Đăng nhập Thành viên Thiết kế</h3>
+      <h3 style="margin:0 0 12px;font-size:16px;color:var(--gray-900)">🧑‍💼 Đăng nhập Nhân viên</h3>
       <div id="login-designer-content"></div>
     </div>
   </div>
@@ -530,8 +530,9 @@ function applyRoleUI() {
     if (currentRole === 'lead') {
       r.textContent = '🛡️ Quản lý (toàn quyền)';
     } else if (currentRole === 'designer') {
-      const linked = currentUserEmpId ? '✓ đã liên kết NV' : '⚠ chưa liên kết';
-      r.textContent = `🧑‍🎨 Thành viên TK (${linked})`;
+      const empRec = currentUserEmpId && (typeof state !== 'undefined') ? state.employees.find(e => e.id === currentUserEmpId) : null;
+      const chucDanh = empRec ? empRec.role : 'Nhân viên';
+      r.textContent = `👤 ${chucDanh}`;
     } else {
       r.textContent = currentRole;
     }
@@ -543,6 +544,14 @@ function applyRoleUI() {
 function isLead() { return currentRole === 'lead'; }
 function isDesignerRole() { return currentRole === 'designer'; }
 function canEdit() { return isLead(); }
+// Kế toán: nhân viên có role 'Kế toán' hoặc 'Dự toán viên' (tên cũ) — được toàn quyền trên card Thanh toán thiết kế
+function isKeToan() {
+  if (currentRole !== 'designer' || !currentUserEmpId) return false;
+  const emp = state.employees.find(e => e.id === currentUserEmpId);
+  return emp && (emp.role === 'Kế toán' || emp.role === 'Dự toán viên');
+}
+// Trả về true nếu có quyền admin trên payment (lead hoặc kế toán)
+function isPaymentAdmin() { return isLead() || isKeToan(); }
 
 function showLoginScreen() {
   document.getElementById('login-screen').classList.remove('hidden');
@@ -691,7 +700,7 @@ function resetAdminPin() {
 
 function changeMyPassword() {
   if (currentRole !== 'designer' || !currentUserEmpId) {
-    toast('Chỉ Thành viên TK đã liên kết NV mới đổi được mật khẩu', 'error');
+    toast('Chỉ Nhân viên đã liên kết hồ sơ mới đổi được mật khẩu', 'error');
     return;
   }
   const emp = state.employees.find(e => e.id === currentUserEmpId);
@@ -758,7 +767,7 @@ function openMyTaskUpdate(projectId, taskId) {
       </div>
     </div>
     <div class="text-xs text-muted mt-2">
-      📌 Thành viên TK chỉ cập nhật được: trạng thái, tiến độ %, ngày HT, ghi chú.<br>
+      📌 Nhân viên chỉ cập nhật được: trạng thái, tiến độ %, ngày HT, ghi chú.<br>
       Để thay đổi nội dung, người TH, deadline... vui lòng liên hệ Trưởng nhóm.
     </div>
   `;
@@ -805,7 +814,7 @@ const defaultConfig = {
   pccc105DefaultDays: 15
 };
 
-const ROLES = ['Trưởng nhóm TK', 'KS Thiết kế cao cấp', 'Kỹ sư Thiết kế', 'Kỹ thuật viên TK', 'Dự toán viên', 'BIM Modeler', 'KTS PCCC', 'Thực tập sinh'];
+const ROLES = ['Trưởng nhóm TK', 'KS Thiết kế cao cấp', 'Kỹ sư Thiết kế', 'Kỹ thuật viên TK', 'Kế toán', 'BIM Modeler', 'KTS PCCC', 'Thực tập sinh'];
 const NV_STATUS = ['Đang làm', 'Nghỉ phép', 'Nghỉ việc'];
 const PROJECT_STATUS = ['Mới tạo', 'Đang triển khai', 'Tạm dừng', 'Hoàn thành', 'Hủy'];
 const TASK_STATUS = ['Chưa bắt đầu', 'Đang thực hiện', 'Đang chờ duyệt', 'Hoàn thành', 'Tạm dừng'];
@@ -881,6 +890,11 @@ async function pullFromCloud() {
 }
 
 /* ---------- Xử lý dữ liệu nhận từ cloud ---------- */
+function migrateRoles(employees) {
+  // Đổi tên role cũ → mới để đồng bộ với cấu hình hiện tại
+  return (employees || []).map(e => e.role === 'Dự toán viên' ? { ...e, role: 'Kế toán' } : e);
+}
+
 function applyCloudData(data) {
   if (!data) {
     console.log('applyCloudData: data null/undefined');
@@ -889,11 +903,11 @@ function applyCloudData(data) {
   const cloudTs = data.meta && data.meta.lastSaved;
   const localTs = state.meta && state.meta.lastSaved;
   console.log('applyCloudData — cloud:', cloudTs, '| local:', localTs);
-  state.employees = data.employees || [];
+  state.employees = migrateRoles(data.employees);
   state.projects  = data.projects  || [];
   state.config    = { ...defaultConfig, ...(data.config || {}) };
   state.meta      = data.meta || { lastSaved: null, version: 1 };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // Không cache vào localStorage — dữ liệu duy nhất từ Firebase
   updateLastSaved();
   if (currentRole) render();
 }
@@ -939,34 +953,27 @@ async function manualPushCloud() {
   await pushToCloud(true);
 }
 
-/* ---------- Local storage ---------- */
+/* ---------- Local storage (chỉ dùng cho PIN admin, không lưu dữ liệu app) ---------- */
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      state.employees = parsed.employees || [];
-      state.projects  = parsed.projects  || [];
-      state.config    = { ...defaultConfig, ...(parsed.config || {}) };
-      state.meta      = parsed.meta || { lastSaved: null, version: 1 };
-    }
-  } catch(e) {
-    console.error('Lỗi tải dữ liệu local:', e);
-  }
+  // Không đọc dữ liệu app từ localStorage nữa — toàn bộ lấy từ Firebase
+  // Chỉ reset state về mặc định; pullFromCloud() sẽ điền dữ liệu thực
+  state.employees = [];
+  state.projects  = [];
+  state.config    = { ...defaultConfig };
+  state.meta      = { lastSaved: null, version: 1 };
   updateLastSaved();
   updateSyncStatus('off');
 }
 
 function saveState() {
   state.meta.lastSaved = new Date().toISOString();
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    updateLastSaved();
-  } catch(e) {
-    toast('Lỗi lưu local: ' + e.message, 'error');
+  updateLastSaved();
+  // Lưu duy nhất lên Firebase — không dùng localStorage cho dữ liệu app
+  if (_fbRef) {
+    pushToCloud(false);
+  } else {
+    toast('⚠️ Chưa kết nối Firebase — dữ liệu chưa được lưu!', 'error', 5000);
   }
-  // Đẩy lên Firebase — tất cả máy đang mở nhận ngay qua onValue listener
-  if (_fbRef) pushToCloud(false);
 }
 
 function updateLastSaved() {
@@ -1241,7 +1248,7 @@ function render() {
   let topBanners = getDelayedAlertBanner();
   // Add designer read-only banner
   if (currentRole === 'designer') {
-    topBanners += `<div class="role-banner designer">🧑‍🎨 Bạn đang đăng nhập với vai trò <strong>Thành viên Thiết kế</strong> – chỉ có thể xem, không thay đổi được dữ liệu. Liên hệ Trưởng nhóm nếu cần chỉnh sửa.</div>`;
+    topBanners += `<div class="role-banner designer">🧑‍💼 Bạn đang đăng nhập với vai trò <strong>Nhân viên</strong> – chỉ có thể xem, không thay đổi được dữ liệu. Liên hệ Trưởng nhóm nếu cần chỉnh sửa.</div>`;
   }
   content.innerHTML = topBanners;
 
@@ -1793,7 +1800,9 @@ function onProjFilter() {
 }
 
 function openProjectForm(id) {
-  if (!isLead()) { toast('Bạn không có quyền thực hiện thao tác này', 'error'); return; }
+  // Kế toán chỉ được sửa (không được tạo mới), và chỉ phần Hợp đồng & thanh toán
+  if (!isLead() && !isKeToan()) { toast('Bạn không có quyền thực hiện thao tác này', 'error'); return; }
+  if (isKeToan() && !id) { toast('Kế toán không có quyền tạo dự án mới', 'error'); return; }
   const isEdit = !!id;
   const p = isEdit ? state.projects.find(x => x.id === id) : {
     id: uid('p_'),
@@ -1825,22 +1834,28 @@ function openProjectForm(id) {
     tasks: []
   };
 
+  // Kế toán chỉ chỉnh sửa được section 4
+  const ro = isKeToan() ? 'readonly style="background:var(--gray-50);color:var(--gray-500)"' : '';
+  const roSel = isKeToan() ? 'disabled style="background:var(--gray-50);color:var(--gray-500)"' : '';
+  const roTa  = isKeToan() ? 'readonly style="background:var(--gray-50);color:var(--gray-500)"' : '';
+
   const body = `
+    ${isKeToan() ? '<div class="role-banner designer">🔒 Kế toán: chỉ chỉnh sửa được phần <strong>4. Hợp đồng &amp; thanh toán</strong>. Các phần khác chỉ để xem.</div>' : ''}
     <div class="form-section-title">📋 1. Thông tin cơ bản</div>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label required">Mã dự án</label>
-        <input class="form-input" id="f-code" value="${escapeHtml(p.code||'')}" />
+        <input class="form-input" id="f-code" value="${escapeHtml(p.code||'')}" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Trạng thái</label>
-        <select class="form-select" id="f-status">
+        <select class="form-select" id="f-status" ${roSel}>
           ${PROJECT_STATUS.map(s => `<option value="${s}" ${s===p.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Giai đoạn dự án</label>
-        <select class="form-select" id="f-projectPhase">
+        <select class="form-select" id="f-projectPhase" ${roSel}>
           <option value="" ${!p.projectPhase?'selected':''}>-- Chọn giai đoạn --</option>
           <option value="Thiết kế thi công" ${'Thiết kế thi công'===p.projectPhase?'selected':''}>Thiết kế thi công</option>
           <option value="Thiết kế cơ sở" ${'Thiết kế cơ sở'===p.projectPhase?'selected':''}>Thiết kế cơ sở</option>
@@ -1849,11 +1864,11 @@ function openProjectForm(id) {
       </div>
       <div class="form-group full">
         <label class="form-label required">Tên dự án</label>
-        <input class="form-input" id="f-name" value="${escapeHtml(p.name||'')}" placeholder="VD: Hệ thống PCCC Chung cư ABC" />
+        <input class="form-input" id="f-name" value="${escapeHtml(p.name||'')}" placeholder="VD: Hệ thống PCCC Chung cư ABC" ${ro} />
       </div>
       <div class="form-group full">
         <label class="form-label">Địa điểm xây dựng</label>
-        <input class="form-input" id="f-location" value="${escapeHtml(p.location||'')}" />
+        <input class="form-input" id="f-location" value="${escapeHtml(p.location||'')}" ${ro} />
       </div>
     </div>
 
@@ -1861,15 +1876,15 @@ function openProjectForm(id) {
     <div class="form-grid">
       <div class="form-group full">
         <label class="form-label">Tên chủ đầu tư</label>
-        <input class="form-input" id="f-investor" value="${escapeHtml(p.investor||'')}" />
+        <input class="form-input" id="f-investor" value="${escapeHtml(p.investor||'')}" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Người liên hệ CĐT (tên)</label>
-        <input class="form-input" id="f-investorContactName" value="${escapeHtml(p.investorContactName||'')}" placeholder="VD: Nguyễn Văn A" />
+        <input class="form-input" id="f-investorContactName" value="${escapeHtml(p.investorContactName||'')}" placeholder="VD: Nguyễn Văn A" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">SĐT người liên hệ CĐT</label>
-        <input type="tel" class="form-input" id="f-investorContactPhone" value="${escapeHtml(p.investorContactPhone||'')}" placeholder="0901234567" />
+        <input type="tel" class="form-input" id="f-investorContactPhone" value="${escapeHtml(p.investorContactPhone||'')}" placeholder="0901234567" ${ro} />
       </div>
     </div>
 
@@ -1877,15 +1892,15 @@ function openProjectForm(id) {
     <div class="form-grid">
       <div class="form-group full">
         <label class="form-label">Tên công ty thiết kế kiến trúc</label>
-        <input class="form-input" id="f-architectCompany" value="${escapeHtml(p.architectCompany||'')}" placeholder="VD: Công ty CP Kiến trúc XYZ" />
+        <input class="form-input" id="f-architectCompany" value="${escapeHtml(p.architectCompany||'')}" placeholder="VD: Công ty CP Kiến trúc XYZ" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Người quản lý thiết kế</label>
-        <input class="form-input" id="f-architectManagerName" value="${escapeHtml(p.architectManagerName||'')}" />
+        <input class="form-input" id="f-architectManagerName" value="${escapeHtml(p.architectManagerName||'')}" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">SĐT liên hệ</label>
-        <input type="tel" class="form-input" id="f-architectManagerPhone" value="${escapeHtml(p.architectManagerPhone||'')}" />
+        <input type="tel" class="form-input" id="f-architectManagerPhone" value="${escapeHtml(p.architectManagerPhone||'')}" ${ro} />
       </div>
     </div>
 
@@ -1909,11 +1924,11 @@ function openProjectForm(id) {
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Ngày bắt đầu thiết kế</label>
-        <input type="text" class="form-input datepicker" id="f-designStart" value="${isoToDmy(p.designStart||'')}" placeholder="dd/mm/yyyy" />
+        <input type="text" class="form-input datepicker" id="f-designStart" value="${isoToDmy(p.designStart||'')}" placeholder="dd/mm/yyyy" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label required">Hạn hoàn thành thiết kế</label>
-        <input type="text" class="form-input datepicker" id="f-designDeadline" value="${isoToDmy(p.designDeadline||'')}" placeholder="dd/mm/yyyy" />
+        <input type="text" class="form-input datepicker" id="f-designDeadline" value="${isoToDmy(p.designDeadline||'')}" placeholder="dd/mm/yyyy" ${ro} />
       </div>
     </div>
 
@@ -1921,42 +1936,58 @@ function openProjectForm(id) {
     <div class="form-grid">
       <div class="form-group full">
         <label class="form-label">Mã hồ sơ thẩm định PCCC</label>
-        <input class="form-input" id="f-pccc105FileCode" value="${escapeHtml(p.pccc105FileCode||'')}" placeholder="VD: G01.801.307-260130-00017" />
+        <input class="form-input" id="f-pccc105FileCode" value="${escapeHtml(p.pccc105FileCode||'')}" placeholder="VD: G01.801.307-260130-00017" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Ngày nộp hồ sơ thẩm duyệt</label>
-        <input type="text" class="form-input datepicker" id="f-pccc105SubmitDate" value="${isoToDmy(p.pccc105SubmitDate||'')}" placeholder="dd/mm/yyyy" />
+        <input type="text" class="form-input datepicker" id="f-pccc105SubmitDate" value="${isoToDmy(p.pccc105SubmitDate||'')}" placeholder="dd/mm/yyyy" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Hạn hoàn thành thẩm duyệt</label>
-        <input type="text" class="form-input datepicker" id="f-pccc105Deadline" value="${isoToDmy(p.pccc105Deadline||'')}" placeholder="dd/mm/yyyy" />
+        <input type="text" class="form-input datepicker" id="f-pccc105Deadline" value="${isoToDmy(p.pccc105Deadline||'')}" placeholder="dd/mm/yyyy" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">Cán bộ PC07 phụ trách (tên)</label>
-        <input class="form-input" id="f-pc07OfficerName" value="${escapeHtml(p.pc07OfficerName||'')}" />
+        <input class="form-input" id="f-pc07OfficerName" value="${escapeHtml(p.pc07OfficerName||'')}" ${ro} />
       </div>
       <div class="form-group">
         <label class="form-label">SĐT cán bộ PC07</label>
-        <input type="tel" class="form-input" id="f-pc07OfficerPhone" value="${escapeHtml(p.pc07OfficerPhone||'')}" />
+        <input type="tel" class="form-input" id="f-pc07OfficerPhone" value="${escapeHtml(p.pc07OfficerPhone||'')}" ${ro} />
       </div>
     </div>
 
     <div class="form-section-title">📝 7. Ghi chú</div>
     <div class="form-grid">
       <div class="form-group full">
-        <textarea class="form-textarea" id="f-notes" placeholder="Ghi chú chung về dự án...">${escapeHtml(p.notes||'')}</textarea>
+        <textarea class="form-textarea" id="f-notes" placeholder="Ghi chú chung về dự án..." ${roTa}>${escapeHtml(p.notes||'')}</textarea>
       </div>
     </div>
     <div class="text-xs text-muted mt-2">📌 Theo Nghị định 105/2025/NĐ-CP, thời hạn thẩm duyệt PCCC thường 5–15 ngày làm việc tùy quy mô.</div>
   `;
-  showModal(isEdit ? 'Sửa dự án' : 'Thêm dự án mới', body, [
+  showModal(isEdit ? (isKeToan() ? 'Cập nhật Hợp đồng & Thanh toán' : 'Sửa dự án') : 'Thêm dự án mới', body, [
     { label: 'Hủy', onclick: 'closeModal()' },
     { label: isEdit ? 'Cập nhật' : 'Tạo dự án', class: 'btn-primary', onclick: `submitProjectForm(${isEdit ? `'${id}'` : 'null'})` }
   ], { locked: true });
 }
 
 function submitProjectForm(id) {
-  if (!isLead()) { toast('Bạn không có quyền', 'error'); return; }
+  if (!isLead() && !isKeToan()) { toast('Bạn không có quyền', 'error'); return; }
+
+  if (isKeToan()) {
+    // Kế toán chỉ được lưu phần 4: Hợp đồng & thanh toán
+    if (!id) { toast('Kế toán không được tạo dự án mới', 'error'); return; }
+    const p = state.projects.find(x => x.id === id);
+    if (!p) return;
+    p.contractNo    = document.getElementById('f-contractNo').value.trim();
+    p.contractDate  = dmyToIso(document.getElementById('f-contractDate').value);
+    p.contractValue = document.getElementById('f-contractValue').value;
+    saveState();
+    closeModal();
+    toast('Đã cập nhật thông tin Hợp đồng & Thanh toán', 'success');
+    navigate('project_detail', id);
+    return;
+  }
+
   const data = {
     code: document.getElementById('f-code').value.trim(),
     name: document.getElementById('f-name').value.trim(),
@@ -2023,7 +2054,7 @@ function renderProjectDetail(content, actions, projectId) {
 
   actions.innerHTML = `
     <button class="btn" onclick="navigate('projects')">← Danh sách</button>
-    <button class="btn lead-only" onclick="openProjectForm('${p.id}')">✏️ Sửa thông tin</button>
+    <button class="btn ${isKeToan() ? '' : 'lead-only'}" onclick="openProjectForm('${p.id}')">${isKeToan() ? '📑 Sửa Hợp đồng & TT' : '✏️ Sửa thông tin'}</button>
     <button class="btn btn-primary lead-only" onclick="openTaskForm('${p.id}')">+ Thêm nhiệm vụ</button>
   `;
 
@@ -2212,14 +2243,14 @@ function renderProjectDetail(content, actions, projectId) {
   html += `<div class="card">
     <div class="card-header">
       <h3 class="card-title">💰 Thanh toán thiết kế (${payments.length})</h3>
-      <button class="btn btn-primary btn-sm lead-only" onclick="openPaymentForm('${p.id}')">+ Thêm thanh toán</button>
+      <button class="btn btn-primary btn-sm ${isPaymentAdmin() ? '' : 'lead-only'}" onclick="openPaymentForm('${p.id}')">+ Thêm thanh toán</button>
     </div>`;
 
   if (payments.length === 0) {
     html += `<div class="empty-state">
       <div class="empty-state-icon">💳</div>
       <p>Chưa có đợt thanh toán nào.</p>
-      <button class="btn btn-primary mt-2 lead-only" onclick="openPaymentForm('${p.id}')">+ Thêm đợt đầu tiên</button>
+      <button class="btn btn-primary mt-2 ${isPaymentAdmin() ? '' : 'lead-only'}" onclick="openPaymentForm('${p.id}')">+ Thêm đợt đầu tiên</button>
     </div>`;
   } else {
     html += `<div class="table-wrap"><table class="data-table">
@@ -2244,9 +2275,9 @@ function renderProjectDetail(content, actions, projectId) {
         <td><span class="badge badge-${stClass}">${pm.status||'—'}</span></td>
         <td class="num"><strong>${fmtMoney(pm.amount)}</strong></td>
         <td>
-          ${canUpdatePayment(pm) && !isLead() ? `<button class="btn btn-sm btn-primary" onclick="openPaymentForm('${p.id}','${pm.id}')">📝 Cập nhật</button>` : ''}
-          <button class="btn btn-sm lead-only" onclick="openPaymentForm('${p.id}','${pm.id}')">Sửa</button>
-          <button class="btn btn-sm btn-danger lead-only" onclick="deletePayment('${p.id}','${pm.id}')">×</button>
+          ${canUpdatePayment(pm) && !isPaymentAdmin() ? `<button class="btn btn-sm btn-primary" onclick="openPaymentForm('${p.id}','${pm.id}')">📝 Cập nhật</button>` : ''}
+          <button class="btn btn-sm ${isPaymentAdmin() ? '' : 'lead-only'}" onclick="openPaymentForm('${p.id}','${pm.id}')">Sửa</button>
+          <button class="btn btn-sm btn-danger ${isPaymentAdmin() ? '' : 'lead-only'}" onclick="deletePayment('${p.id}','${pm.id}')">×</button>
         </td>
       </tr>`;
     });
@@ -2438,7 +2469,7 @@ function deleteReport(projectId, reportId) {
 const PAYMENT_STATUS = ['Đang thực hiện','Đang chờ duyệt','Đã hoàn thành'];
 
 function canUpdatePayment(pm) {
-  if (isLead()) return true;
+  if (isPaymentAdmin()) return true;
   if (currentRole === 'designer' && currentUserEmpId && pm.assigneeId === currentUserEmpId) return true;
   return false;
 }
@@ -2453,7 +2484,7 @@ function openPaymentForm(projectId, paymentId) {
   if (!pm) return;
 
   // Thành viên chỉ được sửa payment được giao cho mình, không được thêm mới
-  if (!isLead()) {
+  if (!isPaymentAdmin()) {
     if (!isEdit) { toast('Bạn không có quyền thêm đợt thanh toán', 'error'); return; }
     if (!canUpdatePayment(pm)) { toast('Bạn chỉ có thể cập nhật nhiệm vụ được giao cho mình', 'error'); return; }
   }
@@ -2462,7 +2493,7 @@ function openPaymentForm(projectId, paymentId) {
     `<option value="${e.id}" ${e.id===pm.assigneeId?'selected':''}>${escapeHtml(e.fullName)}</option>`
   ).join('');
 
-  const isDesigner = !isLead();
+  const isDesigner = !isPaymentAdmin();
   const body = `
     <div class="form-group">
       <label class="form-label required">Nội dung thanh toán</label>
@@ -2511,8 +2542,8 @@ function submitPaymentForm(projectId, paymentId) {
     id: paymentId || uid('pm_'),
     name,
     // Designer không được đổi assignee và amount — giữ nguyên giá trị cũ
-    assigneeId: isLead() ? document.getElementById('pm-assignee').value : (existing ? existing.assigneeId : ''),
-    amount: isLead() ? (Number(document.getElementById('pm-amount').value) || 0) : (existing ? existing.amount : 0),
+    assigneeId: isPaymentAdmin() ? document.getElementById('pm-assignee').value : (existing ? existing.assigneeId : ''),
+    amount: isPaymentAdmin() ? (Number(document.getElementById('pm-amount').value) || 0) : (existing ? existing.amount : 0),
     status: document.getElementById('pm-status').value,
     progress: Math.min(100, Math.max(0, parseInt(document.getElementById('pm-progress').value)||0)),
   };
@@ -2720,6 +2751,9 @@ function renderEmployees(content, actions) {
       const tasks = state.projects.flatMap(p => (p.tasks||[]).filter(t => t.assigneeId === e.id));
       const active = tasks.filter(t => t.status !== 'Hoàn thành').length;
       const overdue = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+      // Đếm thêm payments đang làm (dành cho Kế toán)
+      const payments = state.projects.flatMap(p => (p.payments||[]).filter(pm => pm.assigneeId === e.id));
+      const activePm = payments.filter(pm => pm.status !== 'Đã hoàn thành').length;
       const stClass = e.status === 'Đang làm' ? 'success' : e.status === 'Nghỉ phép' ? 'warning' : 'default';
       html += `<tr>
         <td><strong>${escapeHtml(e.code||'')}</strong></td>
@@ -2728,8 +2762,10 @@ function renderEmployees(content, actions) {
         <td>${escapeHtml(e.email||'—')}</td>
         <td>${escapeHtml(e.phone||'—')}</td>
         <td class="center">
-          <span class="badge badge-info">${active} đang làm</span>
-          ${overdue ? '<br><span class="badge badge-danger">'+overdue+' trễ</span>' : ''}
+          ${active > 0 ? `<span class="badge badge-info">${active} nhiệm vụ</span>` : ''}
+          ${activePm > 0 ? `<span class="badge badge-progress" style="margin-top:2px">${activePm} thanh toán</span>` : ''}
+          ${active === 0 && activePm === 0 ? '<span class="text-muted text-xs">—</span>' : ''}
+          ${overdue ? `<br><span class="badge badge-danger">${overdue} trễ</span>` : ''}
         </td>
         <td><span class="badge badge-${stClass}">${escapeHtml(e.status)}</span>${e.passwordHash ? '' : '<br><span class="badge badge-warning" title="Chưa đặt MK đăng nhập">⚠ Chưa có MK</span>'}</td>
         <td>
@@ -2790,7 +2826,7 @@ function openEmployeeForm(id) {
     </div>
     <div class="form-group">
       <label class="form-label">&nbsp;</label>
-      <div class="text-xs text-muted" style="padding:8px 0">💡 Cấp MK cho NV đăng nhập với vai trò Thành viên Thiết kế. NV có thể đổi MK sau khi đăng nhập.</div>
+      <div class="text-xs text-muted" style="padding:8px 0">💡 Cấp MK cho NV đăng nhập với vai trò Nhân viên. NV có thể đổi MK sau khi đăng nhập.</div>
     </div>
     <div class="form-group full">
       <label class="form-label">Ghi chú</label>
@@ -3155,7 +3191,7 @@ function loadSampleData() {
       { id: uid('e_'), code: 'NV002', fullName: 'Trần Thị Bình', role: 'KS Thiết kế cao cấp', email: 'binh.tt@pccc.vn', phone: '0901234568', status: 'Đang làm', passwordHash: dpwd },
       { id: uid('e_'), code: 'NV003', fullName: 'Lê Quang Cường', role: 'Kỹ sư Thiết kế', email: 'cuong.lq@pccc.vn', phone: '0901234569', status: 'Đang làm', passwordHash: dpwd },
       { id: uid('e_'), code: 'NV004', fullName: 'Phạm Thị Dung', role: 'BIM Modeler', email: 'dung.pt@pccc.vn', phone: '0901234570', status: 'Đang làm', passwordHash: dpwd },
-      { id: uid('e_'), code: 'NV005', fullName: 'Hoàng Minh Đức', role: 'Dự toán viên', email: 'duc.hm@pccc.vn', phone: '0901234571', status: 'Đang làm', passwordHash: dpwd },
+      { id: uid('e_'), code: 'NV005', fullName: 'Hoàng Minh Đức', role: 'Kế toán', email: 'duc.hm@pccc.vn', phone: '0901234571', status: 'Đang làm', passwordHash: dpwd },
       { id: uid('e_'), code: 'NV006', fullName: 'Vũ Thị Hà', role: 'Kỹ thuật viên TK', email: 'ha.vt@pccc.vn', phone: '0901234572', status: 'Nghỉ phép', passwordHash: dpwd }
     ];
     state.employees = state.employees.concat(emps);
@@ -3318,6 +3354,8 @@ async function initApp() {
 
   // Đặt mật khẩu admin mặc định (ghi đè mỗi lần load để đảm bảo đúng)
   localStorage.setItem(ADMIN_PIN_KEY, '-4qbpua');
+  // Xóa dữ liệu app cũ khỏi localStorage (nếu còn từ phiên bản trước)
+  localStorage.removeItem(STORAGE_KEY);
 
   loadState();
   loadRole();
@@ -3326,10 +3364,10 @@ async function initApp() {
   setLoadingMsg('🔴 Đang kết nối Firebase…', 20);
   try {
     const ok = await pullFromCloud();
-    setLoadingMsg(ok ? '✅ Đã tải dữ liệu!' : '📂 Firebase trống, dùng dữ liệu local', 100);
+    setLoadingMsg(ok ? '✅ Đã tải dữ liệu từ Firebase!' : '⚠️ Firebase trống, chưa có dữ liệu', 100);
     updateLastSaved();
   } catch(e) {
-    setLoadingMsg('⚠️ Lỗi kết nối, dùng dữ liệu local', 100);
+    setLoadingMsg('⚠️ Lỗi kết nối Firebase — vui lòng kiểm tra mạng', 100);
     await new Promise(r => setTimeout(r, 800));
   }
   await new Promise(r => setTimeout(r, 400));
