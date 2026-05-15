@@ -1397,86 +1397,101 @@ function renderDashboard(content, actions) {
   const projects = state.projects;
   const total = projects.length;
   const inProgress = projects.filter(p => projectStatusComputed(p) === 'Đang triển khai').length;
-  const delayed = projects.filter(p => projectStatusComputed(p) === 'Chậm tiến độ').length;
-  const done = projects.filter(p => p.status === 'Hoàn thành').length;
+  const delayed    = projects.filter(p => projectStatusComputed(p) === 'Chậm tiến độ').length;
+  const done       = projects.filter(p => p.status === 'Hoàn thành').length;
 
   const allTasks = projects.flatMap(p => (p.tasks||[]).map(t => ({...t, projectName: p.name, projectId: p.id})));
-  const totalTasks = allTasks.length;
+  const totalTasks   = allTasks.length;
+  const doneTasks    = allTasks.filter(t => t.status === 'Hoàn thành').length;
   const overdueTasks = allTasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0);
-  const warningTasks = allTasks.filter(t => {
-    if (t.status === 'Hoàn thành') return false;
-    return computeWarningLevel(t) === 'warning';
-  });
 
-  // Upcoming projects (deadline within 14 days)
+  const allPayments = projects.flatMap(p => (p.payments||[]).map(pm => ({...pm, projectName: p.name, projectId: p.id})));
+  const totalContractValue = projects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
+  const totalPaid          = projects.reduce((s,p) => s + computeProjectPaid(p), 0);
+  const totalUnpaid        = totalContractValue - totalPaid;
+
   const upcoming = projects
     .filter(p => p.designDeadline && p.status !== 'Hoàn thành' && daysFromToday(p.designDeadline) >= 0 && daysFromToday(p.designDeadline) <= 14)
     .sort((a,b) => new Date(a.designDeadline) - new Date(b.designDeadline));
 
-  const totalContractValue = projects.reduce((s,p) => s + (Number(p.contractValue)||0), 0);
-
   let html = '';
 
   if (total === 0) {
-    html += `
-      <div class="card">
-        <div class="empty-state">
-          <div class="empty-state-icon">🏗️</div>
-          <h3>Chưa có dự án nào</h3>
-          <p>Bắt đầu bằng cách thêm nhân viên và dự án đầu tiên.</p>
-          <button class="btn btn-primary mt-2" onclick="navigate('projects')">+ Tạo dự án mới</button>
-          <button class="btn mt-2 lead-only" onclick="loadSampleData()">🎲 Tạo dữ liệu mẫu</button>
-        </div>
-      </div>`;
+    html += `<div class="card"><div class="empty-state">
+      <div class="empty-state-icon">🏗️</div>
+      <h3>Chưa có dự án nào</h3>
+      <p>Bắt đầu bằng cách thêm nhân viên và dự án đầu tiên.</p>
+      <button class="btn btn-primary mt-2" onclick="navigate('projects')">+ Tạo dự án mới</button>
+      <button class="btn mt-2 lead-only" onclick="loadSampleData()">🎲 Tạo dữ liệu mẫu</button>
+    </div></div>`;
     content.innerHTML = html;
     return;
   }
 
+  /* ── Row 1: 4 stat cards dự án ── */
   html += `<div class="stat-grid">
-    <div class="stat-card">
+    <div class="stat-card" style="cursor:pointer" onclick="navigate('projects')">
       <div class="stat-label">Tổng dự án</div>
       <div class="stat-value">${total}</div>
-      <div class="stat-sub">Tổng GT HĐ: ${fmtMoney(totalContractValue)}</div>
+      <div class="stat-sub">${done} hoàn thành · ${inProgress} đang triển khai</div>
     </div>
-    <div class="stat-card success">
-      <div class="stat-label">Đang triển khai</div>
-      <div class="stat-value">${inProgress}</div>
-      <div class="stat-sub">${done} đã hoàn thành</div>
-    </div>
-    <div class="stat-card danger">
+    <div class="stat-card danger" style="cursor:pointer" onclick="navigate('projects')">
       <div class="stat-label">Chậm tiến độ</div>
       <div class="stat-value">${delayed}</div>
       <div class="stat-sub">${overdueTasks.length} nhiệm vụ trễ hạn</div>
     </div>
+    <div class="stat-card success">
+      <div class="stat-label">Nhiệm vụ hoàn thành</div>
+      <div class="stat-value">${doneTasks}/${totalTasks}</div>
+      <div class="stat-sub">${totalTasks ? Math.round(doneTasks/totalTasks*100) : 0}% hoàn thành</div>
+    </div>
     <div class="stat-card warning">
-      <div class="stat-label">Sắp hết hạn</div>
-      <div class="stat-value">${warningTasks.length}</div>
-      <div class="stat-sub">${totalTasks} tổng nhiệm vụ</div>
+      <div class="stat-label">Sắp đến hạn (14 ngày)</div>
+      <div class="stat-value">${upcoming.length}</div>
+      <div class="stat-sub">dự án cần chú ý</div>
     </div>
   </div>`;
 
-  // Upcoming
+  /* ── Row 2: 3 stat cards tài chính ── */
+  html += `<div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+      <div class="stat-label">Tổng GT hợp đồng</div>
+      <div class="stat-value" style="font-size:22px">${fmtMoney(totalContractValue)}</div>
+      <div class="stat-sub">${total} dự án</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Đã thanh toán</div>
+      <div class="stat-value" style="font-size:22px">${fmtMoney(totalPaid)}</div>
+      <div class="stat-sub">${totalContractValue ? Math.round(totalPaid/totalContractValue*100) : 0}% giá trị HĐ</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Còn phải thu</div>
+      <div class="stat-value" style="font-size:22px">${fmtMoney(Math.max(0, totalUnpaid))}</div>
+      <div class="stat-sub">${allPayments.filter(pm => pm.status !== 'Đã hoàn thành').length} đợt chưa hoàn thành</div>
+    </div>
+  </div>`;
+
+  /* ── Dự án sắp đến hạn ── */
   html += `<div class="card">
     <div class="card-header">
       <h3 class="card-title">⏰ Dự án sắp đến hạn (14 ngày tới)</h3>
       <button class="btn btn-sm" onclick="navigate('projects')">Xem tất cả →</button>
     </div>`;
   if (upcoming.length === 0) {
-    html += `<p class="text-muted">Không có dự án nào sắp đến hạn.</p>`;
+    html += `<p class="text-muted" style="padding:12px 0">✅ Không có dự án nào sắp đến hạn trong 14 ngày tới.</p>`;
   } else {
     html += `<div class="table-wrap"><table class="data-table">
       <thead><tr>
-        <th>Mã DA</th><th>Tên dự án</th><th>Giai đoạn</th><th>Chủ đầu tư</th>
-        <th>Hạn hoàn thành TK</th><th>Tiến độ</th><th>Trạng thái</th><th></th>
+        <th>Mã DA</th><th>Tên dự án</th><th>Chủ đầu tư</th>
+        <th>Hạn TK</th><th>Tiến độ</th><th>Trạng thái</th><th></th>
       </tr></thead><tbody>`;
     upcoming.forEach(p => {
-      const lvl = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
+      const lvl  = computeWarningLevel({status: p.status, startDate: p.designStart || p.contractDate, deadline: p.designDeadline});
       const prog = computeProjectProgress(p);
       html += `<tr class="${rowClassForLevel(lvl)}">
-        <td><strong>${escapeHtml(p.code || p.id)}</strong></td>
+        <td><strong>${escapeHtml(p.code||p.id)}</strong></td>
         <td>${escapeHtml(p.name)}</td>
-        <td>${p.projectPhase ? `<span class="badge badge-progress">${escapeHtml(p.projectPhase)}</span>` : '<span class="text-muted">—</span>'}</td>
-        <td>${escapeHtml(p.investor || '—')}</td>
+        <td>${escapeHtml(p.investor||'—')}</td>
         <td>${deadlineDisplay(p.designDeadline)}</td>
         <td><div class="flex items-center gap-2"><div class="progress"><div class="progress-bar" style="width:${prog}%;background:${progressBarColor(prog,p.status)}"></div></div><span>${prog}%</span></div></td>
         <td>${badgeForLevel(lvl)}</td>
@@ -1487,19 +1502,19 @@ function renderDashboard(content, actions) {
   }
   html += `</div>`;
 
-  // Overdue tasks
+  /* ── Nhiệm vụ trễ hạn ── */
   if (overdueTasks.length > 0) {
     html += `<div class="card">
       <div class="card-header">
-        <h3 class="card-title" style="color:var(--danger)">🚨 Nhiệm vụ trễ hạn</h3>
+        <h3 class="card-title" style="color:var(--danger)">🚨 Nhiệm vụ trễ hạn (${overdueTasks.length})</h3>
       </div>
       <div class="table-wrap"><table class="data-table">
         <thead><tr>
           <th>Dự án</th><th>Nội dung TK</th><th>Người thực hiện</th>
           <th>Hạn</th><th>Trễ</th><th>Tiến độ</th><th></th>
         </tr></thead><tbody>`;
-    overdueTasks.slice(0, 10).forEach(t => {
-      const emp = state.employees.find(e => e.id === t.assigneeId);
+    overdueTasks.slice(0,10).forEach(t => {
+      const emp  = state.employees.find(e => e.id === t.assigneeId);
       const days = Math.abs(daysFromToday(t.deadline));
       html += `<tr class="row-danger">
         <td>${escapeHtml(t.projectName)}</td>
@@ -1507,42 +1522,88 @@ function renderDashboard(content, actions) {
         <td>${emp ? escapeHtml(emp.fullName) : '—'}</td>
         <td>${fmtDate(t.deadline)}</td>
         <td><strong style="color:var(--danger)">${days} ngày</strong></td>
-        <td>${t.progress || 0}%</td>
+        <td>${t.progress||0}%</td>
         <td><button class="btn btn-sm" onclick="navigate('project_detail','${t.projectId}')">Mở</button></td>
       </tr>`;
     });
     html += `</tbody></table></div></div>`;
   }
 
-  // Workload by employee
+  /* ── Đợt thanh toán chưa hoàn thành ── */
+  const pendingPayments = allPayments.filter(pm => pm.status !== 'Đã hoàn thành');
+  if (pendingPayments.length > 0) {
+    html += `<div class="card">
+      <div class="card-header">
+        <h3 class="card-title">💰 Đợt thanh toán chưa hoàn thành (${pendingPayments.length})</h3>
+      </div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr>
+          <th>Dự án</th><th>Đợt</th><th>Kế toán phụ trách</th>
+          <th class="num">Giá trị</th><th>Trạng thái</th><th></th>
+        </tr></thead><tbody>`;
+    pendingPayments.slice(0,10).forEach(pm => {
+      const emp = state.employees.find(e => e.id === pm.assigneeId);
+      const stClass = pm.status === 'Đang thực hiện' ? 'info' : pm.status === 'Chờ xử lý' ? 'warning' : 'default';
+      html += `<tr>
+        <td>${escapeHtml(pm.projectName)}</td>
+        <td>${escapeHtml(pm.name||'—')}</td>
+        <td>${emp ? escapeHtml(emp.fullName) : '—'}</td>
+        <td class="num">${fmtMoney(pm.amount)}</td>
+        <td><span class="badge badge-${stClass}">${escapeHtml(pm.status||'—')}</span></td>
+        <td><button class="btn btn-sm" onclick="navigate('project_detail','${pm.projectId}')">Mở</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+
+  /* ── Khối lượng theo nhân viên ── */
   if (state.employees.length > 0) {
+    const activeEmps = state.employees.filter(e => e.status === 'Đang làm');
     html += `<div class="card">
       <div class="card-header"><h3 class="card-title">👥 Khối lượng theo nhân viên</h3></div>
       <div class="table-wrap"><table class="data-table">
         <thead><tr>
-          <th>Nhân viên</th><th>Chức danh</th>
-          <th class="center">Tổng nhiệm vụ</th><th class="center">Đang làm</th>
-          <th class="center">Hoàn thành</th><th class="center">Trễ hạn</th>
+          <th>Nhân viên</th><th>Chức danh</th><th>Loại</th>
+          <th class="center">Tổng</th><th class="center">Đang làm</th>
+          <th class="center">Hoàn thành</th><th class="center">Trễ/Tồn</th>
         </tr></thead><tbody>`;
-    state.employees.filter(e => e.status === 'Đang làm').forEach(emp => {
-      const tasks = allTasks.filter(t => t.assigneeId === emp.id);
-      const doneCnt = tasks.filter(t => t.status === 'Hoàn thành').length;
-      const inProgCnt = tasks.filter(t => t.status === 'Đang thực hiện').length;
-      const overdueCnt = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
-      html += `<tr>
-        <td><strong>${escapeHtml(emp.fullName)}</strong></td>
-        <td>${escapeHtml(emp.role)}</td>
-        <td class="center">${tasks.length}</td>
-        <td class="center"><span class="badge badge-info">${inProgCnt}</span></td>
-        <td class="center"><span class="badge badge-success">${doneCnt}</span></td>
-        <td class="center">${overdueCnt > 0 ? '<span class="badge badge-danger">'+overdueCnt+'</span>' : '0'}</td>
-      </tr>`;
+    activeEmps.forEach(emp => {
+      const isKT = emp.role === 'Kế toán' || emp.role === 'Dự toán viên';
+      if (isKT) {
+        const pms      = allPayments.filter(pm => pm.assigneeId === emp.id);
+        const pmDone   = pms.filter(pm => pm.status === 'Đã hoàn thành').length;
+        const pmActive = pms.filter(pm => pm.status !== 'Đã hoàn thành').length;
+        html += `<tr>
+          <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+          <td>${escapeHtml(emp.role)}</td>
+          <td><span class="badge badge-progress">Thanh toán</span></td>
+          <td class="center">${pms.length}</td>
+          <td class="center"><span class="badge badge-info">${pmActive}</span></td>
+          <td class="center"><span class="badge badge-success">${pmDone}</span></td>
+          <td class="center">—</td>
+        </tr>`;
+      } else {
+        const tasks      = allTasks.filter(t => t.assigneeId === emp.id);
+        const tDone      = tasks.filter(t => t.status === 'Hoàn thành').length;
+        const tActive    = tasks.filter(t => t.status === 'Đang thực hiện').length;
+        const tOverdue   = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+        html += `<tr>
+          <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+          <td>${escapeHtml(emp.role)}</td>
+          <td><span class="badge badge-info">Nhiệm vụ</span></td>
+          <td class="center">${tasks.length}</td>
+          <td class="center"><span class="badge badge-info">${tActive}</span></td>
+          <td class="center"><span class="badge badge-success">${tDone}</span></td>
+          <td class="center">${tOverdue > 0 ? '<span class="badge badge-danger">'+tOverdue+'</span>' : '0'}</td>
+        </tr>`;
+      }
     });
     html += `</tbody></table></div></div>`;
   }
 
   content.innerHTML = html;
 }
+
 
 /* ============================================================
    PROJECT LIST
@@ -2933,6 +2994,7 @@ function renderReports(content, actions) {
   </div>`;
 
   // Workload report
+  const allPayments = state.projects.flatMap(p => (p.payments||[]).map(pm => ({...pm, projectName: p.name})));
   html += `<div class="card">
     <div class="card-header"><h3 class="card-title">📊 Báo cáo khối lượng theo nhân viên</h3>
       <button class="btn btn-sm" onclick="exportEmployeeReport()">📥 Xuất CSV</button>
@@ -2940,25 +3002,45 @@ function renderReports(content, actions) {
     <div class="table-wrap"><table class="data-table">
       <thead><tr>
         <th>Mã NV</th><th>Họ tên</th><th>Chức danh</th>
-        <th class="center">Tổng NV</th><th class="center">Hoàn thành</th><th class="center">Đang làm</th>
+        <th class="center">Tổng</th><th class="center">Hoàn thành</th><th class="center">Đang làm</th>
         <th class="center">Trễ hạn</th><th class="center">Tỷ lệ HT</th>
       </tr></thead><tbody>`;
   state.employees.forEach(emp => {
-    const tasks = allTasks.filter(t => t.assigneeId === emp.id);
-    const done = tasks.filter(t => t.status === 'Hoàn thành').length;
-    const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
-    const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
-    const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
-    html += `<tr>
-      <td>${escapeHtml(emp.code)}</td>
-      <td><strong>${escapeHtml(emp.fullName)}</strong></td>
-      <td>${escapeHtml(emp.role)}</td>
-      <td class="center">${tasks.length}</td>
-      <td class="center"><span class="badge badge-success">${done}</span></td>
-      <td class="center"><span class="badge badge-info">${inProg}</span></td>
-      <td class="center">${od ? '<span class="badge badge-danger">'+od+'</span>' : '0'}</td>
-      <td class="center">${rate}%</td>
-    </tr>`;
+    const isKT = emp.role === 'Kế toán' || emp.role === 'Dự toán viên';
+    if (isKT) {
+      // Kế toán: thống kê theo payments
+      const pms = allPayments.filter(pm => pm.assigneeId === emp.id);
+      const done = pms.filter(pm => pm.status === 'Đã hoàn thành').length;
+      const inProg = pms.filter(pm => pm.status !== 'Đã hoàn thành').length;
+      const rate = pms.length ? Math.round(done/pms.length*100) : 0;
+      html += `<tr>
+        <td>${escapeHtml(emp.code)}</td>
+        <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+        <td>${escapeHtml(emp.role)}</td>
+        <td class="center">${pms.length} <span class="text-xs text-muted">(đợt TT)</span></td>
+        <td class="center"><span class="badge badge-success">${done}</span></td>
+        <td class="center"><span class="badge badge-info">${inProg}</span></td>
+        <td class="center">—</td>
+        <td class="center">${rate}%</td>
+      </tr>`;
+    } else {
+      // Nhân viên thiết kế: thống kê theo tasks
+      const tasks = allTasks.filter(t => t.assigneeId === emp.id);
+      const done = tasks.filter(t => t.status === 'Hoàn thành').length;
+      const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
+      const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+      const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
+      html += `<tr>
+        <td>${escapeHtml(emp.code)}</td>
+        <td><strong>${escapeHtml(emp.fullName)}</strong></td>
+        <td>${escapeHtml(emp.role)}</td>
+        <td class="center">${tasks.length}</td>
+        <td class="center"><span class="badge badge-success">${done}</span></td>
+        <td class="center"><span class="badge badge-info">${inProg}</span></td>
+        <td class="center">${od ? '<span class="badge badge-danger">'+od+'</span>' : '0'}</td>
+        <td class="center">${rate}%</td>
+      </tr>`;
+    }
   });
   html += `</tbody></table></div></div>`;
 
@@ -2998,14 +3080,24 @@ function renderReports(content, actions) {
 
 function exportEmployeeReport() {
   const allTasks = state.projects.flatMap(p => (p.tasks||[]).map(t => ({...t, projectName: p.name, projectCode: p.code})));
-  let csv = '﻿' + 'Mã NV,Họ tên,Chức danh,Tổng nhiệm vụ,Hoàn thành,Đang làm,Trễ hạn,Tỷ lệ HT\n';
+  const allPayments = state.projects.flatMap(p => (p.payments||[]).map(pm => ({...pm, projectName: p.name})));
+  let csv = '﻿' + 'Mã NV,Họ tên,Chức danh,Loại công việc,Tổng,Hoàn thành,Đang làm,Trễ hạn,Tỷ lệ HT\n';
   state.employees.forEach(e => {
-    const tasks = allTasks.filter(t => t.assigneeId === e.id);
-    const done = tasks.filter(t => t.status === 'Hoàn thành').length;
-    const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
-    const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
-    const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
-    csv += `"${e.code}","${e.fullName}","${e.role}",${tasks.length},${done},${inProg},${od},${rate}%\n`;
+    const isKT = e.role === 'Kế toán' || e.role === 'Dự toán viên';
+    if (isKT) {
+      const pms = allPayments.filter(pm => pm.assigneeId === e.id);
+      const done = pms.filter(pm => pm.status === 'Đã hoàn thành').length;
+      const inProg = pms.filter(pm => pm.status !== 'Đã hoàn thành').length;
+      const rate = pms.length ? Math.round(done/pms.length*100) : 0;
+      csv += `"${e.code}","${e.fullName}","${e.role}","Đợt thanh toán",${pms.length},${done},${inProg},0,${rate}%\n`;
+    } else {
+      const tasks = allTasks.filter(t => t.assigneeId === e.id);
+      const done = tasks.filter(t => t.status === 'Hoàn thành').length;
+      const inProg = tasks.filter(t => t.status === 'Đang thực hiện').length;
+      const od = tasks.filter(t => t.status !== 'Hoàn thành' && t.deadline && daysFromToday(t.deadline) < 0).length;
+      const rate = tasks.length ? Math.round(done/tasks.length*100) : 0;
+      csv += `"${e.code}","${e.fullName}","${e.role}","Nhiệm vụ thiết kế",${tasks.length},${done},${inProg},${od},${rate}%\n`;
+    }
   });
   downloadFile('bao_cao_nhan_vien.csv', csv, 'text/csv;charset=utf-8');
   toast('Đã xuất báo cáo nhân viên', 'success');
